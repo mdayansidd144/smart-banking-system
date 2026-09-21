@@ -1,23 +1,36 @@
 package com.smartbank.account.service;
+
 import com.smartbank.account.dto.AccountResponse;
 import com.smartbank.account.dto.CreateAccountRequest;
 import com.smartbank.account.entity.Account;
+import com.smartbank.account.entity.AccountStatus;
+import com.smartbank.account.entity.Transaction;
+import com.smartbank.account.entity.TransactionType;
+import com.smartbank.account.exception.*;
 import com.smartbank.account.repository.AccountRepository;
+import com.smartbank.account.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
+
 @Service
 public class AccountService {
+
     private final AccountRepository repository;
+    private final TransactionRepository transactionRepository;
     private final Random random = new Random();
 
-    public AccountService(AccountRepository repository) {
+    public AccountService(AccountRepository repository,
+                          TransactionRepository transactionRepository) {
         this.repository = repository;
+        this.transactionRepository = transactionRepository;
     }
+
     @Transactional
     public AccountResponse createAccount(CreateAccountRequest request) {
         Account account = new Account();
@@ -25,21 +38,95 @@ public class AccountService {
         account.setCurrency(request.getCurrency().toUpperCase());
         account.setAccountNumber(generateAccountNumber());
         account.setBalance(BigDecimal.ZERO);
+
         Account saved = repository.save(account);
         return toResponse(saved);
     }
+
     @Transactional(readOnly = true)
     public AccountResponse getAccount(UUID id) {
         Account account = repository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Account not found: " + id));
+                .orElseThrow(() -> new AccountNotFoundException(id));
         return toResponse(account);
     }
+
     @Transactional(readOnly = true)
     public List<AccountResponse> getAllAccounts() {
         return repository.findAll().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
+
+    @Transactional
+    public AccountResponse deposit(UUID accountId, BigDecimal amount, String description) {
+        validateAmount(amount);
+
+        Account account = repository.findByIdWithLock(accountId)
+                .orElseThrow(() -> new AccountNotFoundException(accountId));
+
+        ensureActive(account);
+
+        account.setBalance(account.getBalance().add(amount));
+        Account saved = repository.save(account);
+
+        recordTransaction(saved, TransactionType.DEPOSIT, amount, description);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public AccountResponse withdraw(UUID accountId, BigDecimal amount, String description) {
+        validateAmount(amount);
+
+        Account account = repository.findByIdWithLock(accountId)
+                .orElseThrow(() -> new AccountNotFoundException(accountId));
+
+        ensureActive(account);
+
+        if (account.getBalance().compareTo(amount) < 0) {
+            throw new InsufficientFundsException(account.getBalance(), amount);
+        }
+
+        account.setBalance(account.getBalance().subtract(amount));
+        Account saved = repository.save(account);
+
+        recordTransaction(saved, TransactionType.WITHDRAWAL, amount, description);
+        return toResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Transaction> getTransactions(UUID accountId) {
+        if (!repository.existsById(accountId)) {
+            throw new AccountNotFoundException(accountId);
+        }
+        return transactionRepository.findByAccountIdOrderByCreatedAtDesc(accountId);
+    }
+
+    private void validateAmount(BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidAmountException("Amount must be greater than zero");
+        }
+        if (amount.scale() > 2) {
+            throw new InvalidAmountException("Amount cannot have more than 2 decimal places");
+        }
+    }
+
+    private void ensureActive(Account account) {
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new AccountNotActiveException(account.getId(), account.getStatus());
+        }
+    }
+
+    private void recordTransaction(Account account, TransactionType type,
+                                   BigDecimal amount, String description) {
+        Transaction tx = new Transaction();
+        tx.setAccountId(account.getId());
+        tx.setType(type);
+        tx.setAmount(amount);
+        tx.setBalanceAfter(account.getBalance());
+        tx.setDescription(description);
+        transactionRepository.save(tx);
+    }
+
     private String generateAccountNumber() {
         String number;
         do {
@@ -47,6 +134,7 @@ public class AccountService {
         } while (repository.existsByAccountNumber(number));
         return number;
     }
+
     private AccountResponse toResponse(Account a) {
         return new AccountResponse(
                 a.getId(),
