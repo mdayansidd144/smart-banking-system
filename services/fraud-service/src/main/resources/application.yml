@@ -41,5 +41,6 @@ management:
 logging:
   level:
     com.smartbank.fraud: DEBUG
+    dev.langchain4j: INFO
     org.apache.kafka: WARN
     org.springframework.kafka: WARN
