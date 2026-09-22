@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Welcome to Smart Bank</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header { background: #1a73e8; color: white; padding: 24px; text-align: center; }
+        .body { padding: 32px; }
+        .account-number { font-size: 28px; font-family: monospace; text-align: center; padding: 20px; background: #e8f0fe; border-radius: 6px; margin: 16px 0; }
+        .footer { background: #f8f9fa; padding: 16px; text-align: center; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎉 Welcome to Smart Bank</h1>
+    </div>
+    <div class="body">
+        <p>Hi <span th:text="${ownerName}">Customer</span>,</p>
+        <p>Your Smart Bank account has been successfully created. Welcome aboard!</p>
+
+        <div class="account-number" th:text="${accountNumber}">SB0000000000</div>
+
+        <p><strong>Currency:</strong> <span th:text="${currency}">INR</span></p>
+        <p><strong>Opening Balance:</strong> ₹0.00</p>
+
+        <p>You can now start transacting with your account. Visit the app or use our APIs to deposit, withdraw, and transfer funds.</p>
+    </div>
+    <div class="footer">
+        Smart Bank · This is an automated message, please do not reply.
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,48 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build all services
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        service:
+          - account-service
+          - notification-service
+          - fraud-service
+          - identity-service
+          - api-gateway
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build ${{ matrix.service }}
+        working-directory: services/${{ matrix.service }}
+        run: mvn -B clean test --no-transfer-progress
+
+      - name: Package ${{ matrix.service }}
+        working-directory: services/${{ matrix.service }}
+        run: mvn -B package -DskipTests --no-transfer-progress
+
+      - name: Upload JAR (account-service only)
+        if: matrix.service == 'account-service'
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-service-jar
+          path: services/account-service/target/*.jar
+          retention-days: 7

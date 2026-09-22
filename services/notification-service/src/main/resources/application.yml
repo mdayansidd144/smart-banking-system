@@ -1,8 +1,33 @@
 server:
   port: 8081
+
 spring:
   application:
     name: notification-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/smartbank
+    username: smartbank
+    password: smartbank123
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ayansiddiqui1411@gmail.com
+    password: uekogxttpnmimiye
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
   kafka:
     bootstrap-servers: localhost:9092
@@ -16,6 +41,10 @@ spring:
         spring.json.trusted.packages: com.smartbank.*
         spring.json.use.type.headers: false
 
+notification:
+  default-recipient: ayansiddiqui1411@gmail.com
+  from-address: ayansiddiqui1411@gmail.com
+
 management:
   endpoints:
     web:
@@ -24,5 +53,6 @@ management:
 
 logging:
   level:
+    com.smartbank.notification: DEBUG
     org.apache.kafka: WARN
     org.springframework.kafka: WARN

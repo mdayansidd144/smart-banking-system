@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Transfer Notification</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header { background: #7c4dff; color: white; padding: 24px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .body { padding: 32px; }
+        .amount { font-size: 36px; color: #7c4dff; font-weight: bold; text-align: center; margin: 16px 0; }
+        .details { background: #f8f9fa; border-radius: 6px; padding: 16px; margin: 16px 0; }
+        .details table { width: 100%; }
+        .details td { padding: 8px 0; }
+        .details td:first-child { color: #666; }
+        .details td:last-child { text-align: right; font-weight: bold; font-family: monospace; }
+        .footer { background: #f8f9fa; padding: 16px; text-align: center; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1> Transfer Completed</h1>
+    </div>
+    <div class="body">
+        <p>Hello,</p>
+        <p>A transfer has been completed from your Smart Bank account.</p>
+
+        <div class="amount">₹<span th:text="${amount}">0</span></div>
+
+        <div class="details">
+            <table>
+                <tr>
+                    <td>From Account</td>
+                    <td th:text="${fromAccountId}">...</td>
+                </tr>
+                <tr>
+                    <td>To Account</td>
+                    <td th:text="${toAccountId}">...</td>
+                </tr>
+                <tr>
+                    <td>Description</td>
+                    <td th:text="${description} ?: 'N/A'">N/A</td>
+                </tr>
+                <tr>
+                    <td>Date &amp; Time</td>
+                    <td th:text="${timestamp}">2026-01-01</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div class="footer">
+        Smart Bank · This is an automated message, please do not reply.
+    </div>
+</div>
+</body>
+</html>
