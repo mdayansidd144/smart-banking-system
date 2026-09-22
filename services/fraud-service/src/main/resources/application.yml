@@ -1,13 +1,29 @@
 server:
-  port: 8081
+  port: 8082
+
 spring:
   application:
-    name: notification-service
+    name: fraud-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/smartbank
+    username: smartbank
+    password: smartbank123
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
 
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
-      group-id: notification-group
+      group-id: fraud-service-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
@@ -24,5 +40,6 @@ management:
 
 logging:
   level:
+    com.smartbank.fraud: DEBUG
     org.apache.kafka: WARN
     org.springframework.kafka: WARN

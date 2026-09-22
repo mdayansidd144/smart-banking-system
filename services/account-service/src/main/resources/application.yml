@@ -1,22 +1,32 @@
 server:
-  port: 8081
+  port: 8080
 
 spring:
   application:
-    name: notification-service
+    name: account-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/smartbank
+    username: smartbank
+    password: smartbank123
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
 
   kafka:
     bootstrap-servers: localhost:9092
-    consumer:
-      group-id: notification-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
-        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
-        spring.json.trusted.packages: com.smartbank.*
-        spring.json.use.type.headers: false
-        spring.json.value.default.type: com.smartbank.notification.event.AccountCreatedEvent
+        spring.json.add.type.headers: true
 
 management:
   endpoints:
@@ -26,5 +36,6 @@ management:
 
 logging:
   level:
+    org.hibernate.SQL: WARN
     org.apache.kafka: WARN
     org.springframework.kafka: WARN
