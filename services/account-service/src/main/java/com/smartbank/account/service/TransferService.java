@@ -1,42 +1,73 @@
 package com.smartbank.account.service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartbank.account.dto.TransferRequest;
 import com.smartbank.account.dto.TransferResponse;
-import com.smartbank.account.entity.Account;
-import com.smartbank.account.entity.AccountStatus;
-import com.smartbank.account.entity.Transaction;
-import com.smartbank.account.entity.TransactionType;
-import com.smartbank.account.entity.Transfer;
+import com.smartbank.account.entity.*;
 import com.smartbank.account.event.EventPublisher;
 import com.smartbank.account.event.MoneyTransferredEvent;
 import com.smartbank.account.exception.*;
 import com.smartbank.account.repository.AccountRepository;
+import com.smartbank.account.repository.IdempotencyRepository;
 import com.smartbank.account.repository.TransactionRepository;
 import com.smartbank.account.repository.TransferRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
 public class TransferService {
 
+    private static final Logger log = LoggerFactory.getLogger(TransferService.class);
+
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
     private final TransferRepository transferRepository;
+    private final IdempotencyRepository idempotencyRepository;
     private final EventPublisher eventPublisher;
+    private final ObjectMapper objectMapper;
 
     public TransferService(AccountRepository accountRepository,
                            TransactionRepository transactionRepository,
                            TransferRepository transferRepository,
-                           EventPublisher eventPublisher) {
+                           IdempotencyRepository idempotencyRepository,
+                           EventPublisher eventPublisher,
+                           ObjectMapper objectMapper) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
         this.transferRepository = transferRepository;
+        this.idempotencyRepository = idempotencyRepository;
         this.eventPublisher = eventPublisher;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
-    public TransferResponse transfer(TransferRequest request) {
+    public TransferResponse transfer(String idempotencyKey, TransferRequest request) {
+
+        // ---- Idempotency check ----
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            Optional<IdempotencyRecord> existing =
+                    idempotencyRepository.findByIdempotencyKey(idempotencyKey);
+
+            if (existing.isPresent()) {
+                log.info(" Idempotent replay for key: {}", idempotencyKey);
+                try {
+                    return objectMapper.readValue(
+                            existing.get().getResponseJson(),
+                            TransferResponse.class
+                    );
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to deserialize cached response", e);
+                }
+            }
+        }
+
+        // ---- Execute transfer (existing logic) ----
         UUID fromId = request.getFromAccountId();
         UUID toId = request.getToAccountId();
         BigDecimal amount = request.getAmount();
@@ -47,7 +78,6 @@ public class TransferService {
 
         validateAmount(amount);
 
-        // Deadlock prevention: lock accounts in a consistent order
         UUID firstId  = fromId.compareTo(toId) < 0 ? fromId : toId;
         UUID secondId = fromId.compareTo(toId) < 0 ? toId : fromId;
 
@@ -83,6 +113,7 @@ public class TransferService {
         transfer.setAmount(amount);
         transfer.setDescription(request.getDescription());
         Transfer savedTransfer = transferRepository.save(transfer);
+
         eventPublisher.publishMoneyTransferred(new MoneyTransferredEvent(
                 savedTransfer.getId(),
                 savedTransfer.getFromAccountId(),
@@ -91,7 +122,7 @@ public class TransferService {
                 savedTransfer.getDescription()
         ));
 
-        return new TransferResponse(
+        TransferResponse response = new TransferResponse(
                 savedTransfer.getId(),
                 savedTransfer.getFromAccountId(),
                 savedTransfer.getToAccountId(),
@@ -99,6 +130,22 @@ public class TransferService {
                 savedTransfer.getStatus().name(),
                 savedTransfer.getCreatedAt()
         );
+
+        // ---- Store idempotency record ----
+        if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+            try {
+                IdempotencyRecord record = new IdempotencyRecord();
+                record.setIdempotencyKey(idempotencyKey);
+                record.setResponseJson(objectMapper.writeValueAsString(response));
+                record.setResponseStatus(201);
+                idempotencyRepository.save(record);
+                log.info(" Cached response for key: {}", idempotencyKey);
+            } catch (Exception e) {
+                log.warn("Failed to cache idempotency record: {}", e.getMessage());
+            }
+        }
+
+        return response;
     }
 
     private void validateAmount(BigDecimal amount) {

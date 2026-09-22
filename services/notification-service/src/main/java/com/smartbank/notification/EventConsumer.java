@@ -7,8 +7,10 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Map;
 
 @Component
@@ -17,6 +19,7 @@ public class EventConsumer {
     private static final Logger log = LoggerFactory.getLogger(EventConsumer.class);
     private static final DateTimeFormatter FMT =
             DateTimeFormatter.ofPattern("dd MMM yyyy, hh:mm a");
+    private static final BigDecimal URGENT_THRESHOLD = new BigDecimal("50000");
 
     private final EmailService emailService;
 
@@ -35,15 +38,16 @@ public class EventConsumer {
         log.info(" [EVENT] New account created: owner={}, accountNumber={}",
                 event.getOwnerName(), event.getAccountNumber());
 
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("ownerName", event.getOwnerName());
+        vars.put("accountNumber", event.getAccountNumber());
+        vars.put("currency", event.getCurrency());
+
         emailService.sendEmail(
                 "ACCOUNT_CREATED",
                 "account-created",
                 "Welcome to Smart Bank — Account " + event.getAccountNumber(),
-                Map.of(
-                        "ownerName", event.getOwnerName(),
-                        "accountNumber", event.getAccountNumber(),
-                        "currency", event.getCurrency()
-                )
+                vars
         );
     }
 
@@ -55,19 +59,27 @@ public class EventConsumer {
             }
     )
     public void onMoneyDeposited(@Payload MoneyDepositedEvent event) {
-        log.info(" [EVENT] Deposit: account={}, amount={}", event.getAccountId(), event.getAmount());
+        log.info("[EVENT] Deposit: account={}, amount={}",
+                event.getAccountId(), event.getAmount());
 
-        emailService.sendEmail(
+        boolean urgent = event.getAmount().compareTo(URGENT_THRESHOLD) >= 0;
+        String description = event.getDescription() != null
+                ? event.getDescription() : "N/A";
+
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("amount", event.getAmount());
+        vars.put("accountNumber", event.getAccountId().toString().substring(0, 8) + "...");
+        vars.put("balanceAfter", event.getBalanceAfter());
+        vars.put("description", description);
+        vars.put("timestamp", LocalDateTime.now().format(FMT));
+        vars.put("urgent", urgent);
+
+        emailService.sendEmailWithPriority(
                 "DEPOSIT",
                 "deposit",
                 "Deposit of ₹" + event.getAmount() + " received",
-                Map.of(
-                        "amount", event.getAmount(),
-                        "accountNumber", event.getAccountId().toString().substring(0, 8) + "...",
-                        "balanceAfter", event.getBalanceAfter(),
-                        "description", event.getDescription() != null ? event.getDescription() : "N/A",
-                        "timestamp", LocalDateTime.now().format(FMT)
-                )
+                urgent,
+                vars
         );
     }
 
@@ -79,19 +91,27 @@ public class EventConsumer {
             }
     )
     public void onMoneyWithdrawn(@Payload MoneyWithdrawnEvent event) {
-        log.info(" [EVENT] Withdrawal: account={}, amount={}", event.getAccountId(), event.getAmount());
+        log.info(" [EVENT] Withdrawal: account={}, amount={}",
+                event.getAccountId(), event.getAmount());
 
-        emailService.sendEmail(
+        boolean urgent = event.getAmount().compareTo(URGENT_THRESHOLD) >= 0;
+        String description = event.getDescription() != null
+                ? event.getDescription() : "N/A";
+
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("amount", event.getAmount());
+        vars.put("accountNumber", event.getAccountId().toString().substring(0, 8) + "...");
+        vars.put("balanceAfter", event.getBalanceAfter());
+        vars.put("description", description);
+        vars.put("timestamp", LocalDateTime.now().format(FMT));
+        vars.put("urgent", urgent);
+
+        emailService.sendEmailWithPriority(
                 "WITHDRAWAL",
                 "withdrawal",
                 "Withdrawal of ₹" + event.getAmount() + " processed",
-                Map.of(
-                        "amount", event.getAmount(),
-                        "accountNumber", event.getAccountId().toString().substring(0, 8) + "...",
-                        "balanceAfter", event.getBalanceAfter(),
-                        "description", event.getDescription() != null ? event.getDescription() : "N/A",
-                        "timestamp", LocalDateTime.now().format(FMT)
-                )
+                urgent,
+                vars
         );
     }
 
@@ -106,17 +126,24 @@ public class EventConsumer {
         log.info(" [EVENT] Transfer: from={}, to={}, amount={}",
                 event.getFromAccountId(), event.getToAccountId(), event.getAmount());
 
-        emailService.sendEmail(
+        boolean urgent = event.getAmount().compareTo(URGENT_THRESHOLD) >= 0;
+        String description = event.getDescription() != null
+                ? event.getDescription() : "N/A";
+
+        Map<String, Object> vars = new HashMap<>();
+        vars.put("amount", event.getAmount());
+        vars.put("fromAccountId", event.getFromAccountId());
+        vars.put("toAccountId", event.getToAccountId());
+        vars.put("description", description);
+        vars.put("timestamp", LocalDateTime.now().format(FMT));
+        vars.put("urgent", urgent);
+
+        emailService.sendEmailWithPriority(
                 "TRANSFER",
                 "transfer",
                 "Transfer of ₹" + event.getAmount() + " completed",
-                Map.of(
-                        "amount", event.getAmount(),
-                        "fromAccountId", event.getFromAccountId(),
-                        "toAccountId", event.getToAccountId(),
-                        "description", event.getDescription() != null ? event.getDescription() : "N/A",
-                        "timestamp", LocalDateTime.now().format(FMT)
-                )
+                urgent,
+                vars
         );
     }
 }

@@ -1,5 +1,4 @@
 services:
-
   postgres:
     image: postgres:16-alpine
     container_name: smartbank-postgres
@@ -41,6 +40,100 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
 
+  account-service:
+    build:
+      context: ../../services/account-service
+      dockerfile: Dockerfile
+    container_name: smartbank-account-service
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/smartbank
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+  notification-service:
+    build:
+      context: ../../services/notification-service
+      dockerfile: Dockerfile
+    container_name: smartbank-notification-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/smartbank
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+  fraud-service:
+    build:
+      context: ../../services/fraud-service
+      dockerfile: Dockerfile
+    container_name: smartbank-fraud-service
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/smartbank
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      LANGCHAIN4J_OLLAMA_CHAT_MODEL_BASE_URL: http://host.docker.internal:11434
+
+  identity-service:
+    build:
+      context: ../../services/identity-service
+      dockerfile: Dockerfile
+    container_name: smartbank-identity-service
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/smartbank
+
+  api-gateway:
+    build:
+      context: ../../services/api-gateway
+      dockerfile: Dockerfile
+    container_name: smartbank-api-gateway
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    depends_on:
+      - account-service
+      - notification-service
+      - fraud-service
+      - identity-service
+    environment:
+      # Route 0 — identity-service (public auth endpoints)
+      SPRING_CLOUD_GATEWAY_ROUTES_0_ID: identity-service
+      SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://identity-service:8083
+      SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: Path=/auth/**
+
+      # Route 1 — account-service (accounts + transfers)
+      SPRING_CLOUD_GATEWAY_ROUTES_1_ID: account-service
+      SPRING_CLOUD_GATEWAY_ROUTES_1_URI: http://account-service:8080
+      SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0: Path=/api/v1/accounts/**,/api/v1/transfers/**
+
+      # Route 2 — fraud-service (fraud alerts + AI queries)
+      SPRING_CLOUD_GATEWAY_ROUTES_2_ID: fraud-service
+      SPRING_CLOUD_GATEWAY_ROUTES_2_URI: http://fraud-service:8082
+      SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0: Path=/api/v1/fraud/**
 volumes:
   postgres_data:
   kafka_data:

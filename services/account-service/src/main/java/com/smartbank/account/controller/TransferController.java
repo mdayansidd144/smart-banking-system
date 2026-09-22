@@ -16,10 +16,13 @@ public class TransferController {
     public TransferController(TransferService service) {
         this.service = service;
     }
+
     @PostMapping
     public ResponseEntity<TransferResponse> transfer(
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody TransferRequest request) {
-        TransferResponse response = service.transfer(request);
+
+        TransferResponse response = service.transfer(idempotencyKey, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
