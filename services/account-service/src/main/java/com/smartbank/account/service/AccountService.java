@@ -1,11 +1,14 @@
 package com.smartbank.account.service;
-
 import com.smartbank.account.dto.AccountResponse;
 import com.smartbank.account.dto.CreateAccountRequest;
 import com.smartbank.account.entity.Account;
 import com.smartbank.account.entity.AccountStatus;
 import com.smartbank.account.entity.Transaction;
 import com.smartbank.account.entity.TransactionType;
+import com.smartbank.account.event.AccountCreatedEvent;
+import com.smartbank.account.event.EventPublisher;
+import com.smartbank.account.event.MoneyDepositedEvent;
+import com.smartbank.account.event.MoneyWithdrawnEvent;
 import com.smartbank.account.exception.*;
 import com.smartbank.account.repository.AccountRepository;
 import com.smartbank.account.repository.TransactionRepository;
@@ -17,18 +20,20 @@ import java.util.List;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
 @Service
 public class AccountService {
 
     private final AccountRepository repository;
     private final TransactionRepository transactionRepository;
+    private final EventPublisher eventPublisher;
     private final Random random = new Random();
 
     public AccountService(AccountRepository repository,
-                          TransactionRepository transactionRepository) {
+                          TransactionRepository transactionRepository,
+                          EventPublisher eventPublisher) {
         this.repository = repository;
         this.transactionRepository = transactionRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -40,6 +45,14 @@ public class AccountService {
         account.setBalance(BigDecimal.ZERO);
 
         Account saved = repository.save(account);
+
+        eventPublisher.publishAccountCreated(new AccountCreatedEvent(
+                saved.getId(),
+                saved.getOwnerName(),
+                saved.getAccountNumber(),
+                saved.getCurrency()
+        ));
+
         return toResponse(saved);
     }
 
@@ -68,8 +81,14 @@ public class AccountService {
 
         account.setBalance(account.getBalance().add(amount));
         Account saved = repository.save(account);
-
         recordTransaction(saved, TransactionType.DEPOSIT, amount, description);
+        eventPublisher.publishMoneyDeposited(new MoneyDepositedEvent(
+                saved.getId(),
+                amount,
+                saved.getBalance(),
+                description
+        ));
+
         return toResponse(saved);
     }
 
@@ -90,6 +109,13 @@ public class AccountService {
         Account saved = repository.save(account);
 
         recordTransaction(saved, TransactionType.WITHDRAWAL, amount, description);
+        eventPublisher.publishMoneyWithdrawn(new MoneyWithdrawnEvent(
+                saved.getId(),
+                amount,
+                saved.getBalance(),
+                description
+        ));
+
         return toResponse(saved);
     }
 
@@ -115,7 +141,6 @@ public class AccountService {
             throw new AccountNotActiveException(account.getId(), account.getStatus());
         }
     }
-
     private void recordTransaction(Account account, TransactionType type,
                                    BigDecimal amount, String description) {
         Transaction tx = new Transaction();
