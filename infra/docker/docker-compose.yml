@@ -128,8 +128,7 @@ services:
       # Route 1 — account-service (accounts + transfers)
       SPRING_CLOUD_GATEWAY_ROUTES_1_ID: account-service
       SPRING_CLOUD_GATEWAY_ROUTES_1_URI: http://account-service:8080
-      SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0: Path=/api/v1/accounts/**,/api/v1/transfers/**
-
+      SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0: Path=/api/v1/accounts/**,/api/v1/transfers/**,/api/v1/scheduled-transfers/**
       # Route 2 — fraud-service (fraud alerts + AI queries)
       SPRING_CLOUD_GATEWAY_ROUTES_2_ID: fraud-service
       SPRING_CLOUD_GATEWAY_ROUTES_2_URI: http://fraud-service:8082
