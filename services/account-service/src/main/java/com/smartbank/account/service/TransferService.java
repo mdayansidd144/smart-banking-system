@@ -6,6 +6,7 @@ import com.smartbank.account.dto.TransferResponse;
 import com.smartbank.account.entity.*;
 import com.smartbank.account.event.EventPublisher;
 import com.smartbank.account.event.MoneyTransferredEvent;
+import com.smartbank.account.event.TransferReversedEvent;
 import com.smartbank.account.exception.*;
 import com.smartbank.account.repository.AccountRepository;
 import com.smartbank.account.repository.IdempotencyRepository;
@@ -17,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,6 +27,7 @@ import java.util.UUID;
 public class TransferService {
 
     private static final Logger log = LoggerFactory.getLogger(TransferService.class);
+    private static final long REVERSAL_WINDOW_HOURS = 24;
 
     private final AccountRepository accountRepository;
     private final TransactionRepository transactionRepository;
@@ -46,16 +50,18 @@ public class TransferService {
         this.objectMapper = objectMapper;
     }
 
+    // =========================================================
+    // Original transfer (with idempotency)
+    // =========================================================
     @Transactional
     public TransferResponse transfer(String idempotencyKey, TransferRequest request) {
 
-        // ---- Idempotency check ----
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             Optional<IdempotencyRecord> existing =
                     idempotencyRepository.findByIdempotencyKey(idempotencyKey);
 
             if (existing.isPresent()) {
-                log.info(" Idempotent replay for key: {}", idempotencyKey);
+                log.info("♻️ Idempotent replay for key: {}", idempotencyKey);
                 try {
                     return objectMapper.readValue(
                             existing.get().getResponseJson(),
@@ -67,7 +73,6 @@ public class TransferService {
             }
         }
 
-        // ---- Execute transfer (existing logic) ----
         UUID fromId = request.getFromAccountId();
         UUID toId = request.getToAccountId();
         BigDecimal amount = request.getAmount();
@@ -131,7 +136,6 @@ public class TransferService {
                 savedTransfer.getCreatedAt()
         );
 
-        // ---- Store idempotency record ----
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             try {
                 IdempotencyRecord record = new IdempotencyRecord();
@@ -139,7 +143,7 @@ public class TransferService {
                 record.setResponseJson(objectMapper.writeValueAsString(response));
                 record.setResponseStatus(201);
                 idempotencyRepository.save(record);
-                log.info(" Cached response for key: {}", idempotencyKey);
+                log.info("💾 Cached response for key: {}", idempotencyKey);
             } catch (Exception e) {
                 log.warn("Failed to cache idempotency record: {}", e.getMessage());
             }
@@ -148,6 +152,84 @@ public class TransferService {
         return response;
     }
 
+    // =========================================================
+    // Reversal / Refund
+    // =========================================================
+    @Transactional
+    public TransferResponse reverseTransfer(UUID transferId, String reason) {
+
+        Transfer original = transferRepository.findById(transferId)
+                .orElseThrow(() -> new TransferReversalException("Transfer not found: " + transferId));
+
+        if (original.getStatus() == TransferStatus.REVERSED) {
+            throw new TransferReversalException("Transfer already reversed");
+        }
+
+        if (original.getStatus() != TransferStatus.COMPLETED) {
+            throw new TransferReversalException("Only COMPLETED transfers can be reversed");
+        }
+
+        long hoursSince = ChronoUnit.HOURS.between(original.getCreatedAt(), LocalDateTime.now());
+        if (hoursSince > REVERSAL_WINDOW_HOURS) {
+            throw new TransferReversalException(
+                    "Reversal window expired. Only transfers within "
+                            + REVERSAL_WINDOW_HOURS + " hours can be reversed.");
+        }
+
+        UUID fromId = original.getFromAccountId();
+        UUID toId = original.getToAccountId();
+        BigDecimal amount = original.getAmount();
+
+        UUID firstId  = fromId.compareTo(toId) < 0 ? fromId : toId;
+        UUID secondId = fromId.compareTo(toId) < 0 ? toId : fromId;
+
+        Account first  = accountRepository.findByIdWithLock(firstId)
+                .orElseThrow(() -> new AccountNotFoundException(firstId));
+        Account second = accountRepository.findByIdWithLock(secondId)
+                .orElseThrow(() -> new AccountNotFoundException(secondId));
+
+        Account originalSource = fromId.equals(first.getId()) ? first : second;
+        Account originalDestination = toId.equals(first.getId()) ? first : second;
+
+        // Destination must have the funds to send back
+        if (originalDestination.getBalance().compareTo(amount) < 0) {
+            throw new InsufficientFundsException(originalDestination.getBalance(), amount);
+        }
+
+        // Reverse: destination → source
+        originalDestination.setBalance(originalDestination.getBalance().subtract(amount));
+        originalSource.setBalance(originalSource.getBalance().add(amount));
+
+        accountRepository.save(originalDestination);
+        accountRepository.save(originalSource);
+
+        recordTransaction(originalDestination, TransactionType.WITHDRAWAL, amount,
+                "Reversal out: " + reason);
+        recordTransaction(originalSource, TransactionType.DEPOSIT, amount,
+                "Reversal in: " + reason);
+
+        original.setStatus(TransferStatus.REVERSED);
+        original.setReversedAt(LocalDateTime.now());
+        original.setReversalReason(reason);
+        Transfer savedOriginal = transferRepository.save(original);
+
+        eventPublisher.publishTransferReversed(new TransferReversedEvent(
+                savedOriginal.getId(),
+                savedOriginal.getFromAccountId(),
+                savedOriginal.getToAccountId(),
+                savedOriginal.getAmount(),
+                reason
+        ));
+
+        return new TransferResponse(
+                savedOriginal.getId(),
+                savedOriginal.getFromAccountId(),
+                savedOriginal.getToAccountId(),
+                savedOriginal.getAmount(),
+                savedOriginal.getStatus().name(),
+                savedOriginal.getCreatedAt()
+        );
+    }
     private void validateAmount(BigDecimal amount) {
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidAmountException("Amount must be greater than zero");

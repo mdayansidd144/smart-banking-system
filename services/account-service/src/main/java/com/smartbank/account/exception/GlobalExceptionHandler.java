@@ -18,8 +18,12 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    @ExceptionHandler({InsufficientFundsException.class, InvalidAmountException.class,
-            SameAccountTransferException.class})
+    @ExceptionHandler({
+            InsufficientFundsException.class,
+            InvalidAmountException.class,
+            SameAccountTransferException.class,
+            TransferReversalException.class
+    })
     public ResponseEntity<Map<String, Object>> handleBadRequest(RuntimeException ex) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
     }

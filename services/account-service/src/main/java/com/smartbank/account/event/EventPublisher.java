@@ -6,11 +6,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class EventPublisher {
 
-    // Topic names — keep them in one place
     public static final String TOPIC_ACCOUNT_CREATED = "account.created";
     public static final String TOPIC_MONEY_DEPOSITED = "money.deposited";
     public static final String TOPIC_MONEY_WITHDRAWN = "money.withdrawn";
     public static final String TOPIC_MONEY_TRANSFERRED = "money.transferred";
+    public static final String TOPIC_TRANSFER_REVERSED = "transfer.reversed";
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -32,5 +32,9 @@ public class EventPublisher {
 
     public void publishMoneyTransferred(MoneyTransferredEvent event) {
         kafkaTemplate.send(TOPIC_MONEY_TRANSFERRED, event.getTransferId().toString(), event);
+    }
+
+    public void publishTransferReversed(TransferReversedEvent event) {
+        kafkaTemplate.send(TOPIC_TRANSFER_REVERSED, event.getTransferId().toString(), event);
     }
 }
