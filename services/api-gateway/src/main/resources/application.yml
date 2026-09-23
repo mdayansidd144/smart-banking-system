@@ -3,25 +3,21 @@ server:
 spring:
   application:
     name: api-gateway
-
   cloud:
     gateway:
       routes:
-        # Identity service — public, no auth needed
         - id: identity-service
-          uri: http://localhost:8083
+          uri: http://identity-service:8083
           predicates:
             - Path=/auth/**
 
-        # Account service
         - id: account-service
-          uri: http://localhost:8080
+          uri: http://account-service:8080
           predicates:
             - Path=/api/v1/accounts/**,/api/v1/transfers/**
 
-        # Fraud service
         - id: fraud-service
-          uri: http://localhost:8082
+          uri: http://fraud-service:8082
           predicates:
             - Path=/api/v1/fraud/**
 
@@ -29,7 +25,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,prometheus,metrics
+  endpoint:
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 logging:
   level:

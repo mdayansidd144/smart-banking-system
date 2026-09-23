@@ -63,6 +63,10 @@
             <artifactId>twilio</artifactId>
             <version>10.4.1</version>
         </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>
