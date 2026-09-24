@@ -6,7 +6,7 @@ spring:
     name: fraud-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/smartbank
+    url: jdbc:postgresql://postgres:5432/smartbank
     username: smartbank
     password: smartbank123
     driver-class-name: org.postgresql.Driver
@@ -21,7 +21,7 @@ spring:
         format_sql: true
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: kafka:9092
     consumer:
       group-id: fraud-service-group
       auto-offset-reset: earliest
@@ -31,6 +31,14 @@ spring:
         spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
         spring.json.trusted.packages: com.smartbank.*
         spring.json.use.type.headers: false
+
+langchain4j:
+  ollama:
+    chat-model:
+      base-url: http://host.docker.internal:11434
+      model-name: llama3.2:latest
+      temperature: 0.2
+      timeout: PT60S
 
 management:
   endpoints:
