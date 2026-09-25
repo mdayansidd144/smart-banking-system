@@ -35,6 +35,23 @@ public class Transfer {
     @Column(length = 255)
     private String reversalReason;
 
+    // ---- FX fields (new) ----
+
+    @Column(name = "source_currency", length = 3)
+    private String sourceCurrency;
+
+    @Column(name = "target_currency", length = 3)
+    private String targetCurrency;
+
+    @Column(name = "source_amount", precision = 19, scale = 2)
+    private BigDecimal sourceAmount;
+
+    @Column(name = "target_amount", precision = 19, scale = 2)
+    private BigDecimal targetAmount;
+
+    @Column(name = "fx_rate", precision = 19, scale = 8)
+    private BigDecimal fxRate;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -43,6 +60,8 @@ public class Transfer {
         this.createdAt = LocalDateTime.now();
         if (this.status == null) this.status = TransferStatus.COMPLETED;
     }
+
+    // ---- Getters & Setters ----
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -67,6 +86,21 @@ public class Transfer {
 
     public String getReversalReason() { return reversalReason; }
     public void setReversalReason(String reversalReason) { this.reversalReason = reversalReason; }
+
+    public String getSourceCurrency() { return sourceCurrency; }
+    public void setSourceCurrency(String sourceCurrency) { this.sourceCurrency = sourceCurrency; }
+
+    public String getTargetCurrency() { return targetCurrency; }
+    public void setTargetCurrency(String targetCurrency) { this.targetCurrency = targetCurrency; }
+
+    public BigDecimal getSourceAmount() { return sourceAmount; }
+    public void setSourceAmount(BigDecimal sourceAmount) { this.sourceAmount = sourceAmount; }
+
+    public BigDecimal getTargetAmount() { return targetAmount; }
+    public void setTargetAmount(BigDecimal targetAmount) { this.targetAmount = targetAmount; }
+
+    public BigDecimal getFxRate() { return fxRate; }
+    public void setFxRate(BigDecimal fxRate) { this.fxRate = fxRate; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

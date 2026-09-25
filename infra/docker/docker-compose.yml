@@ -56,7 +56,7 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/smartbank
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-
+      FX_API_KEY: "801e06cf5465db1080a7c6d2869a29ce"
   notification-service:
     build:
       context: ../../services/notification-service
@@ -137,18 +137,23 @@ services:
       # Route 0 — identity-service (strip /api prefix on the way in)
       SPRING_CLOUD_GATEWAY_ROUTES_0_ID: identity-service
       SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://identity-service:8083
-      SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: Path=/api/auth/**,/api/files/**
+      SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: Path=/api/auth/**,/api/files/**,/api/kyc/**
       SPRING_CLOUD_GATEWAY_ROUTES_0_FILTERS_0: StripPrefix=1
 
-      # Route 1 — account-service (accounts + transfers)
+      # Route 1 — account-service (accounts + transfers + audit + budgets + bills)
       SPRING_CLOUD_GATEWAY_ROUTES_1_ID: account-service
       SPRING_CLOUD_GATEWAY_ROUTES_1_URI: http://account-service:8080
-      SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0: Path=/api/v1/accounts/**,/api/v1/transfers/**,/api/v1/scheduled-transfers/**
+      SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0: Path=/api/v1/accounts/**,/api/v1/transfers/**,/api/v1/scheduled-transfers/**,/api/v1/audit/**,/api/v1/budgets/**,/api/v1/bills/**,/api/v1/fx/**
 
       # Route 2 — fraud-service (fraud + AI queries)
       SPRING_CLOUD_GATEWAY_ROUTES_2_ID: fraud-service
       SPRING_CLOUD_GATEWAY_ROUTES_2_URI: http://fraud-service:8082
       SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0: Path=/api/v1/fraud/**,/api/v1/anomalies/**,/api/v1/loans/**,/api/v1/agent/**
+
+      # Route 3 — notification-service
+      SPRING_CLOUD_GATEWAY_ROUTES_3_ID: notification-service
+      SPRING_CLOUD_GATEWAY_ROUTES_3_URI: http://notification-service:8081
+      SPRING_CLOUD_GATEWAY_ROUTES_3_PREDICATES_0: Path=/api/v1/notifications/**
 
   prometheus:
     image: prom/prometheus:latest

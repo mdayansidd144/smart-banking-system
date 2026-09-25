@@ -8,6 +8,8 @@ export interface AuthUser {
   role: string;
   profilePictureUrl: string | null;
   displayName: string | null;
+  provider?: string;
+  kycVerified?: boolean;
   expiresIn: number;
 }
 
@@ -46,7 +48,7 @@ export const login = async (payload: LoginPayload): Promise<AuthUser> => {
   return data;
 };
 
-// ---- Google sign-in ----
+// ---- Google sign-in (kept for future use) ----
 export const googleSignIn = async (idToken: string): Promise<AuthUser> => {
   const { data } = await client.post('/auth/google', { idToken });
   return data;
@@ -63,3 +65,49 @@ export const validateToken = async (token: string): Promise<boolean> => {
     return false;
   }
 };
+
+// ---- Get current user ----
+export const getMe = async (): Promise<AuthUser> => {
+  const token = getStoredToken();
+  const { data } = await client.get('/auth/me', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+};
+
+// ---- Update profile ----
+export const updateProfile = async (payload: {
+  displayName?: string;
+  email?: string;
+}): Promise<AuthUser> => {
+  const token = getStoredToken();
+  const { data } = await client.patch('/auth/me', payload, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return data;
+};
+
+// ---- Change password ----
+export const changePassword = async (payload: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<void> => {
+  const token = getStoredToken();
+  await client.post('/auth/change-password', payload, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
+// ---- Helper: get token from localStorage ----
+function getStoredToken(): string {
+  try {
+    const raw = localStorage.getItem('smartbank.auth');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed.token || '';
+    }
+  } catch {
+    // ignore
+  }
+  return '';
+}

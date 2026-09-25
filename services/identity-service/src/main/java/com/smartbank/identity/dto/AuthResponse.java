@@ -12,6 +12,7 @@ public class AuthResponse {
     private String role;
     private String profilePictureUrl;
     private String displayName;
+    private boolean kycVerified;
     private long expiresIn;
 
     public AuthResponse() {}
@@ -52,6 +53,9 @@ public class AuthResponse {
 
     public String getDisplayName() { return displayName; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
+
+    public boolean isKycVerified() { return kycVerified; }
+    public void setKycVerified(boolean kycVerified) { this.kycVerified = kycVerified; }
 
     public long getExpiresIn() { return expiresIn; }
     public void setExpiresIn(long expiresIn) { this.expiresIn = expiresIn; }

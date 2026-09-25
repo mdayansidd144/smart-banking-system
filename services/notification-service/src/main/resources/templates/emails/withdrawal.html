@@ -4,15 +4,16 @@
     <meta charset="UTF-8">
     <title>Withdrawal Notification</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; margin: 0; }
         .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .header { background: #ea4335; color: white; padding: 24px; text-align: center; }
+        .header { background: #dc2626; color: white; padding: 24px; text-align: center; }
         .header h1 { margin: 0; font-size: 24px; }
         .body { padding: 32px; }
-        .amount { font-size: 36px; color: #ea4335; font-weight: bold; text-align: center; margin: 16px 0; }
+        .amount { font-size: 36px; color: #dc2626; font-weight: bold; text-align: center; margin: 16px 0; }
         .details { background: #f8f9fa; border-radius: 6px; padding: 16px; margin: 16px 0; }
-        .details table { width: 100%; }
-        .details td { padding: 8px 0; }
+        .details table { width: 100%; border-collapse: collapse; }
+        .details td { padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+        .details tr:last-child td { border-bottom: none; }
         .details td:first-child { color: #666; }
         .details td:last-child { text-align: right; font-weight: bold; }
         .footer { background: #f8f9fa; padding: 16px; text-align: center; color: #666; font-size: 12px; }
@@ -21,11 +22,11 @@
 <body>
 <div class="container">
     <div class="header">
-        <h1> Withdrawal Processed</h1>
+        <h1>Withdrawal Processed</h1>
     </div>
     <div class="body">
         <p>Hello,</p>
-        <p>A withdrawal has been processed from your Smart Bank account.</p>
+        <p>A withdrawal has been made from your Smart Bank account.</p>
 
         <div class="amount">− ₹<span th:text="${amount}">0</span></div>
 
@@ -33,19 +34,19 @@
             <table>
                 <tr>
                     <td>Account Number</td>
-                    <td th:text="${accountNumber}">SB0000000000</td>
+                    <td th:text="${accountNumber}">-</td>
                 </tr>
                 <tr>
                     <td>New Balance</td>
-                    <td>₹<span th:text="${balanceAfter}">0</span></td>
+                    <td>₹<span th:text="${balanceAfter}">0.00</span></td>
                 </tr>
                 <tr>
                     <td>Description</td>
-                    <td th:text="${description} ?: 'N/A'">N/A</td>
+                    <td th:text="${description}">-</td>
                 </tr>
                 <tr>
                     <td>Date &amp; Time</td>
-                    <td th:text="${timestamp}">2026-01-01</td>
+                    <td th:text="${timestamp}">-</td>
                 </tr>
             </table>
         </div>

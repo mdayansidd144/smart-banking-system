@@ -45,3 +45,7 @@ logging:
     org.hibernate.SQL: WARN
     org.apache.kafka: WARN
     org.springframework.kafka: WARN
+#fx:
+#  api:
+#    url: https://api.exchangerate.host/live
+#    key: ${FX_API_KEY:801e06cf5465db1080a7c6d2869a29ce}

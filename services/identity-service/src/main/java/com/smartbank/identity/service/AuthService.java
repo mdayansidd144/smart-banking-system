@@ -1,5 +1,4 @@
 package com.smartbank.identity.service;
-
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
@@ -17,7 +16,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
+import com.smartbank.identity.dto.ChangePasswordRequest;
+import com.smartbank.identity.dto.UpdateProfileRequest;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -165,7 +165,7 @@ public class AuthService {
 
     private AuthResponse buildAuthResponse(User user) {
         String token = jwtService.generateToken(user);
-        return new AuthResponse(
+        AuthResponse response = new AuthResponse(
                 token,
                 user.getId(),
                 user.getUsername(),
@@ -175,5 +175,54 @@ public class AuthService {
                 user.getDisplayName(),
                 86400000L
         );
+        response.setKycVerified(user.isKycVerified());
+        return response;
+    }
+    // ---- Get current user ----
+    @Transactional(readOnly = true)
+    public AuthResponse getCurrentUser(String userId) {
+        User user = repository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return buildAuthResponse(user);
+    }
+
+    // ---- Update profile ----
+    @Transactional
+    public AuthResponse updateProfile(String userId, UpdateProfileRequest request) {
+        User user = repository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (request.getDisplayName() != null && !request.getDisplayName().isBlank()) {
+            user.setDisplayName(request.getDisplayName().trim());
+        }
+
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            String newEmail = request.getEmail().trim().toLowerCase();
+            if (!newEmail.equals(user.getEmail()) && repository.existsByEmail(newEmail)) {
+                throw new RuntimeException("Email already in use");
+            }
+            user.setEmail(newEmail);
+        }
+
+        User saved = repository.save(user);
+        return buildAuthResponse(saved);
+    }
+    // ---- Change password ----
+    @Transactional
+    public void changePassword(String userId, ChangePasswordRequest request) {
+        User user = repository.findById(UUID.fromString(userId))
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!"LOCAL".equals(user.getProvider())) {
+            throw new RuntimeException("Password change not available for Google accounts");
+        }
+
+        if (user.getPasswordHash() == null
+                || !passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        repository.save(user);
     }
 }

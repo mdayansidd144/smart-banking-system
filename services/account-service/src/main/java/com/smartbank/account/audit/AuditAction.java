@@ -1,0 +1,13 @@
+package com.smartbank.account.audit;
+public enum AuditAction {
+    CREATE_ACCOUNT,
+    DEPOSIT,
+    WITHDRAWAL,
+    TRANSFER,
+    TRANSFER_REVERSE,
+    SCHEDULE_TRANSFER,
+    CANCEL_SCHEDULED_TRANSFER,
+    DOWNLOAD_STATEMENT,
+    UPDATE_ACCOUNT,
+    FREEZE_ACCOUNT
+}

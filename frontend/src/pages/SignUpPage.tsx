@@ -57,7 +57,6 @@ export default function SignupPage() {
           err?.message ||
           'Signup failed. Please try again.'
       );
-    } finally {
       setLoading(false);
     }
   };
@@ -82,7 +81,20 @@ export default function SignupPage() {
           </div>
         </div>
 
-        <div className="card">
+        <div className="card relative overflow-hidden">
+          {/* Blue overlay loader */}
+          {loading && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-blue-600/95 backdrop-blur-sm animate-fade-in">
+              <div className="w-14 h-14 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="mt-4 text-white font-semibold text-sm">
+                Creating your account…
+              </div>
+              <div className="mt-1 text-white/70 text-xs">
+                Setting things up
+              </div>
+            </div>
+          )}
+
           <div className="card-body">
             <h2 className="text-2xl font-bold text-slate-900">Create account</h2>
             <p className="text-sm text-slate-500 mt-1 mb-6">
@@ -96,6 +108,7 @@ export default function SignupPage() {
             )}
 
             <form onSubmit={submit} className="space-y-4">
+              {/* Profile picture */}
               <div className="flex flex-col items-center mb-2">
                 <div className="relative">
                   {preview ? (
@@ -112,7 +125,8 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => fileRef.current?.click()}
-                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-brand-600 hover:bg-brand-700 text-white text-sm shadow-md transition-all duration-200 hover:scale-105"
+                    disabled={loading}
+                    className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-brand-600 hover:bg-brand-700 text-white text-sm shadow-md transition-all duration-200 hover:scale-105 disabled:opacity-50"
                     title="Upload photo"
                   >
                     +
@@ -121,7 +135,8 @@ export default function SignupPage() {
                     <button
                       type="button"
                       onClick={clearAvatar}
-                      className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-white border border-blue-200 text-slate-500 hover:text-rose-600 hover:border-rose-300 text-xs shadow-sm transition-colors"
+                      disabled={loading}
+                      className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-white border border-blue-200 text-slate-500 hover:text-rose-600 hover:border-rose-300 text-xs shadow-sm transition-colors disabled:opacity-50"
                       title="Remove"
                     >
                       ×
@@ -151,6 +166,7 @@ export default function SignupPage() {
                   className="input"
                   placeholder="johndoe"
                   autoComplete="username"
+                  disabled={loading}
                   required
                 />
               </div>
@@ -166,6 +182,7 @@ export default function SignupPage() {
                   className="input"
                   placeholder="you@example.com"
                   autoComplete="email"
+                  disabled={loading}
                   required
                 />
               </div>
@@ -181,6 +198,7 @@ export default function SignupPage() {
                   className="input"
                   placeholder="min 6 characters"
                   autoComplete="new-password"
+                  disabled={loading}
                   required
                 />
               </div>
@@ -199,11 +217,6 @@ export default function SignupPage() {
                 )}
               </button>
             </form>
-
-            {/*
-             * Google Sign-In — temporarily disabled
-             * Same reason as LoginPage — to re-enable, uncomment.
-             */}
 
             <div className="text-center text-xs text-slate-500 mt-6">
               Already have an account?{' '}

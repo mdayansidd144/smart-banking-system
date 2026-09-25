@@ -3,6 +3,16 @@ interface StatCardProps {
   value: string | number;
   subtitle?: string;
   accent?: 'blue' | 'green' | 'orange' | 'red';
+  tint?:
+    | 'blue'
+    | 'pink'
+    | 'green'
+    | 'hazel'
+    | 'sapphire'
+    | 'ruby'
+    | 'amber'
+    | 'violet'
+    | 'teal';
 }
 
 const accentMap = {
@@ -17,10 +27,13 @@ export default function StatCard({
   value,
   subtitle,
   accent = 'blue',
+  tint,
 }: StatCardProps) {
   const a = accentMap[accent];
+  const tintClass = tint ? `card-tint-${tint}` : '';
+
   return (
-    <div className={`card card-hover ${a.border} ${a.hover} cursor-default`}>
+    <div className={`card card-hover ${a.border} ${a.hover} ${tintClass} cursor-default`}>
       <div className="card-body">
         <div className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
           {title}

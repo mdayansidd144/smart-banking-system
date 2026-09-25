@@ -1,10 +1,12 @@
 server:
   port: 8081
+
 spring:
   application:
     name: notification-service
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/smartbank
+    url: jdbc:postgresql://postgres:5432/smartbank
     username: smartbank
     password: smartbank123
     driver-class-name: org.postgresql.Driver
@@ -19,16 +21,20 @@ spring:
     host: smtp.gmail.com
     port: 587
     username: ayansiddiqui1411@gmail.com
-    password: uekogxttpnmimiye
+    password: "acldqclyzkjyonhc"
     properties:
       mail:
         smtp:
           auth: true
           starttls:
             enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: kafka:9092
     consumer:
       group-id: notification-group
       auto-offset-reset: earliest
@@ -54,8 +60,8 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+
 logging:
   level:
     com.smartbank.notification: DEBUG
-    org.apache.kafka: WARN
     org.springframework.kafka: WARN

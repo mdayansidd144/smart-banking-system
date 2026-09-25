@@ -1,9 +1,14 @@
 package com.smartbank.account.controller;
-
+import com.smartbank.account.audit.Auditable;
+import com.smartbank.account.audit.AuditAction;
 import com.smartbank.account.dto.AccountResponse;
 import com.smartbank.account.dto.AmountRequest;
 import com.smartbank.account.dto.CreateAccountRequest;
+import com.smartbank.account.entity.Account;
 import com.smartbank.account.entity.Transaction;
+import com.smartbank.account.event.EventPublisher;
+import com.smartbank.account.event.StatementRequestedEvent;
+import com.smartbank.account.repository.AccountRepository;
 import com.smartbank.account.service.AccountService;
 import com.smartbank.account.service.StatementService;
 import jakarta.validation.Valid;
@@ -16,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -24,13 +30,21 @@ public class AccountController {
 
     private final AccountService service;
     private final StatementService statementService;
+    private final EventPublisher eventPublisher;
+    private final AccountRepository accountRepository;
 
-    public AccountController(AccountService service, StatementService statementService) {
+    public AccountController(AccountService service,
+                             StatementService statementService,
+                             EventPublisher eventPublisher,
+                             AccountRepository accountRepository) {
         this.service = service;
         this.statementService = statementService;
+        this.eventPublisher = eventPublisher;
+        this.accountRepository = accountRepository;
     }
 
     @PostMapping
+    @Auditable(action = AuditAction.CREATE_ACCOUNT, resourceType = "ACCOUNT")
     public ResponseEntity<AccountResponse> create(
             @Valid @RequestBody CreateAccountRequest request) {
         AccountResponse response = service.createAccount(request);
@@ -48,6 +62,7 @@ public class AccountController {
     }
 
     @PostMapping("/{id}/deposit")
+    @Auditable(action = AuditAction.DEPOSIT, accountIdParam = "id", resourceType = "ACCOUNT")
     public ResponseEntity<AccountResponse> deposit(
             @PathVariable UUID id,
             @Valid @RequestBody AmountRequest request) {
@@ -55,6 +70,7 @@ public class AccountController {
     }
 
     @PostMapping("/{id}/withdraw")
+    @Auditable(action = AuditAction.WITHDRAWAL, accountIdParam = "id", resourceType = "ACCOUNT")
     public ResponseEntity<AccountResponse> withdraw(
             @PathVariable UUID id,
             @Valid @RequestBody AmountRequest request) {
@@ -67,6 +83,7 @@ public class AccountController {
     }
 
     @GetMapping("/{id}/statement")
+    @Auditable(action = AuditAction.DOWNLOAD_STATEMENT, accountIdParam = "id", resourceType = "ACCOUNT")
     public ResponseEntity<byte[]> getStatement(
             @PathVariable UUID id,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
@@ -80,5 +97,40 @@ public class AccountController {
         headers.setContentLength(pdf.length);
 
         return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
+    }
+
+
+    @PostMapping("/{id}/email-statement")
+    @Auditable(action = AuditAction.DOWNLOAD_STATEMENT, accountIdParam = "id", resourceType = "ACCOUNT")
+    public ResponseEntity<Map<String, String>> emailStatement(
+            @PathVariable UUID id,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestBody(required = false) Map<String, String> body) {
+
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Account not found: " + id));
+
+        // Recipient: from body if provided, otherwise a placeholder
+        String recipient = (body != null && body.get("email") != null && !body.get("email").isBlank())
+                ? body.get("email")
+                : account.getOwnerName().toLowerCase().replace(" ", "") + "@example.com";
+
+        UUID requestId = UUID.randomUUID();
+
+        eventPublisher.publishStatementRequested(new StatementRequestedEvent(
+                account.getId(),
+                account.getAccountNumber(),
+                recipient,
+                from,
+                to,
+                requestId
+        ));
+
+        return ResponseEntity.accepted().body(Map.of(
+                "status", "accepted",
+                "message", "Statement will be emailed to " + recipient,
+                "requestId", requestId.toString()
+        ));
     }
 }

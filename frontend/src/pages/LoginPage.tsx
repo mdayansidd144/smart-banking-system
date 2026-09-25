@@ -27,7 +27,6 @@ export default function LoginPage() {
           err?.message ||
           'Invalid username or password'
       );
-    } finally {
       setLoading(false);
     }
   };
@@ -52,7 +51,20 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <div className="card">
+        <div className="card relative overflow-hidden">
+          {/* Blue overlay loader */}
+          {loading && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-blue-600/95 backdrop-blur-sm animate-fade-in">
+              <div className="w-14 h-14 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+              <div className="mt-4 text-white font-semibold text-sm">
+                Signing in…
+              </div>
+              <div className="mt-1 text-white/70 text-xs">
+                Verifying your credentials
+              </div>
+            </div>
+          )}
+
           <div className="card-body">
             <h2 className="text-2xl font-bold text-slate-900">Welcome back</h2>
             <p className="text-sm text-slate-500 mt-1 mb-6">
@@ -77,6 +89,7 @@ export default function LoginPage() {
                   className="input"
                   placeholder="your username"
                   autoComplete="username"
+                  disabled={loading}
                   required
                 />
               </div>
@@ -92,6 +105,7 @@ export default function LoginPage() {
                   className="input"
                   placeholder="••••••••"
                   autoComplete="current-password"
+                  disabled={loading}
                   required
                 />
               </div>
@@ -110,22 +124,6 @@ export default function LoginPage() {
                 )}
               </button>
             </form>
-
-            {/*
-             * Google Sign-In — temporarily disabled
-             * Reason: Google Cloud Console origin validation failing despite correct config.
-             * To re-enable: uncomment this block and remove the "OR" divider above.
-             *
-             * <div className="my-6 flex items-center gap-3">
-             *   <div className="flex-1 h-px bg-blue-100" />
-             *   <span className="text-xs text-slate-400 font-medium">OR</span>
-             *   <div className="flex-1 h-px bg-blue-100" />
-             * </div>
-             *
-             * <div className="flex justify-center">
-             *   <GoogleButton onError={setError} />
-             * </div>
-             */}
 
             <div className="text-center text-xs text-slate-500 mt-6">
               Don't have an account?{' '}

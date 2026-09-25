@@ -1,4 +1,7 @@
 package com.smartbank.account.controller;
+
+import com.smartbank.account.audit.Auditable;
+import com.smartbank.account.audit.AuditAction;
 import com.smartbank.account.dto.TransferRequest;
 import com.smartbank.account.dto.TransferResponse;
 import com.smartbank.account.service.TransferService;
@@ -21,6 +24,7 @@ public class TransferController {
     }
 
     @PostMapping
+    @Auditable(action = AuditAction.TRANSFER, resourceType = "TRANSFER")
     public ResponseEntity<TransferResponse> transfer(
             @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey,
             @Valid @RequestBody TransferRequest request) {
@@ -30,6 +34,7 @@ public class TransferController {
     }
 
     @PostMapping("/{id}/reverse")
+    @Auditable(action = AuditAction.TRANSFER_REVERSE, resourceIdParam = "id", resourceType = "TRANSFER")
     public ResponseEntity<TransferResponse> reverse(
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, String> body) {

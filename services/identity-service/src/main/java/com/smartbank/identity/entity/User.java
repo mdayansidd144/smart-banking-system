@@ -18,14 +18,12 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    // Nullable now — Google users have no local password
+    // Nullable — Google users have no local password
     @Column
     private String passwordHash;
 
     @Column(nullable = false)
     private String role;
-
-    // --- NEW: profile + provider ---
 
     @Column(name = "profile_picture_url", length = 500)
     private String profilePictureUrl;
@@ -35,6 +33,10 @@ public class User {
 
     @Column(name = "display_name")
     private String displayName;
+
+    // ---- NEW: KYC verification flag ----
+    @Column(name = "kyc_verified", nullable = false)
+    private boolean kycVerified = false;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -46,7 +48,7 @@ public class User {
         if (this.provider == null) this.provider = "LOCAL";
     }
 
-    // Getters & Setters
+    // ---- Getters & Setters ----
 
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -71,6 +73,9 @@ public class User {
 
     public String getDisplayName() { return displayName; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
+
+    public boolean isKycVerified() { return kycVerified; }
+    public void setKycVerified(boolean kycVerified) { this.kycVerified = kycVerified; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

@@ -1,7 +1,5 @@
 import client from './client';
 import type { Account, Transaction, Anomaly, FraudAlert } from '../types';
-
-// ---- Accounts ----
 export const getAccounts = async (): Promise<Account[]> => {
   const { data } = await client.get('/v1/accounts');
   return data;
@@ -82,6 +80,19 @@ export const chatWithAgent = async (
     '/v1/agent/chat',
     { message, sessionId },
     { timeout: 120000 }
+  );
+  return data;
+};
+export const emailStatement = async (
+  accountId: string,
+  email: string,
+  from: string,
+  to: string
+): Promise<{ status: string; message: string; requestId: string }> => {
+  const { data } = await client.post(
+    `/v1/accounts/${accountId}/email-statement?from=${from}&to=${to}`,
+    { email },
+    { timeout: 30000 }
   );
   return data;
 };

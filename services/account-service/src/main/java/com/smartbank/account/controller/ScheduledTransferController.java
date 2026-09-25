@@ -1,4 +1,7 @@
 package com.smartbank.account.controller;
+
+import com.smartbank.account.audit.Auditable;
+import com.smartbank.account.audit.AuditAction;
 import com.smartbank.account.dto.CreateScheduledTransferRequest;
 import com.smartbank.account.dto.ScheduledTransferResponse;
 import com.smartbank.account.service.ScheduledTransferService;
@@ -21,6 +24,7 @@ public class ScheduledTransferController {
     }
 
     @PostMapping
+    @Auditable(action = AuditAction.SCHEDULE_TRANSFER, resourceType = "SCHEDULED_TRANSFER")
     public ResponseEntity<ScheduledTransferResponse> create(
             @Valid @RequestBody CreateScheduledTransferRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
@@ -38,6 +42,7 @@ public class ScheduledTransferController {
     }
 
     @DeleteMapping("/{id}")
+    @Auditable(action = AuditAction.CANCEL_SCHEDULED_TRANSFER, resourceIdParam = "id", resourceType = "SCHEDULED_TRANSFER")
     public ResponseEntity<ScheduledTransferResponse> cancel(@PathVariable UUID id) {
         return ResponseEntity.ok(service.cancel(id));
     }

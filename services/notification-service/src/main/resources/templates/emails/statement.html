@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Your Account Statement</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; margin: 0; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header { background: #1a73e8; color: white; padding: 24px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .body { padding: 32px; }
+        .details { background: #f8f9fa; border-radius: 6px; padding: 16px; margin: 16px 0; }
+        .details table { width: 100%; border-collapse: collapse; }
+        .details td { padding: 8px 0; border-bottom: 1px solid #e5e7eb; }
+        .details tr:last-child td { border-bottom: none; }
+        .details td:first-child { color: #666; }
+        .details td:last-child { text-align: right; font-weight: bold; }
+        .footer { background: #f8f9fa; padding: 16px; text-align: center; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>Account Statement</h1>
+    </div>
+    <div class="body">
+        <p>Hello,</p>
+        <p>Please find your account statement attached to this email.</p>
+
+        <div class="details">
+            <table>
+                <tr>
+                    <td>Account Number</td>
+                    <td th:text="${accountNumber}">-</td>
+                </tr>
+                <tr>
+                    <td>Statement Period</td>
+                    <td>
+                        <span th:text="${fromDate}">-</span> to <span th:text="${toDate}">-</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Generated At</td>
+                    <td th:text="${generatedAt}">-</td>
+                </tr>
+            </table>
+        </div>
+
+        <p>If you have any questions about this statement, please contact us.</p>
+    </div>
+    <div class="footer">
+        Smart Bank - This is an automated message, please do not reply.
+    </div>
+</div>
+</body>
+</html>

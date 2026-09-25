@@ -1,5 +1,4 @@
 package com.smartbank.account.service;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartbank.account.dto.TransferRequest;
 import com.smartbank.account.dto.TransferResponse;
@@ -8,6 +7,7 @@ import com.smartbank.account.event.EventPublisher;
 import com.smartbank.account.event.MoneyTransferredEvent;
 import com.smartbank.account.event.TransferReversedEvent;
 import com.smartbank.account.exception.*;
+import com.smartbank.account.fx.FxRateService;
 import com.smartbank.account.repository.AccountRepository;
 import com.smartbank.account.repository.IdempotencyRepository;
 import com.smartbank.account.repository.TransactionRepository;
@@ -16,13 +16,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
-
 @Service
 public class TransferService {
 
@@ -34,6 +33,7 @@ public class TransferService {
     private final TransferRepository transferRepository;
     private final IdempotencyRepository idempotencyRepository;
     private final EventPublisher eventPublisher;
+    private final FxRateService fxRateService;
     private final ObjectMapper objectMapper;
 
     public TransferService(AccountRepository accountRepository,
@@ -41,21 +41,20 @@ public class TransferService {
                            TransferRepository transferRepository,
                            IdempotencyRepository idempotencyRepository,
                            EventPublisher eventPublisher,
+                           FxRateService fxRateService,
                            ObjectMapper objectMapper) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
         this.transferRepository = transferRepository;
         this.idempotencyRepository = idempotencyRepository;
         this.eventPublisher = eventPublisher;
+        this.fxRateService = fxRateService;
         this.objectMapper = objectMapper;
     }
-
-    // =========================================================
-    // Original transfer (with idempotency)
-    // =========================================================
     @Transactional
     public TransferResponse transfer(String idempotencyKey, TransferRequest request) {
 
+        // ---- Idempotency replay ----
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             Optional<IdempotencyRecord> existing =
                     idempotencyRepository.findByIdempotencyKey(idempotencyKey);
@@ -83,6 +82,7 @@ public class TransferService {
 
         validateAmount(amount);
 
+        // Lock accounts in a consistent order to prevent deadlocks
         UUID firstId  = fromId.compareTo(toId) < 0 ? fromId : toId;
         UUID secondId = fromId.compareTo(toId) < 0 ? toId : fromId;
 
@@ -97,28 +97,63 @@ public class TransferService {
         ensureActive(source);
         ensureActive(destination);
 
+        // ---- Determine currencies ----
+        String sourceCurrency = source.getCurrency().toUpperCase();
+        String targetCurrency = (request.getTargetCurrency() != null
+                && !request.getTargetCurrency().isBlank())
+                ? request.getTargetCurrency().toUpperCase()
+                : destination.getCurrency().toUpperCase();
+
+        // ---- FX conversion ----
+        BigDecimal targetAmount;
+        BigDecimal fxRate;
+
+        if (sourceCurrency.equals(targetCurrency)) {
+            targetAmount = amount;
+            fxRate = BigDecimal.ONE;
+        } else {
+            targetAmount = fxRateService.convert(amount, sourceCurrency, targetCurrency);
+            fxRate = targetAmount.divide(amount, 8, RoundingMode.HALF_UP);
+            log.info(" FX transfer: {} {} → {} {} (rate {})",
+                    amount, sourceCurrency, targetAmount, targetCurrency, fxRate);
+        }
+
+        // ---- Balance check (source side) ----
         if (source.getBalance().compareTo(amount) < 0) {
             throw new InsufficientFundsException(source.getBalance(), amount);
         }
 
+        // ---- Move the money ----
         source.setBalance(source.getBalance().subtract(amount));
-        destination.setBalance(destination.getBalance().add(amount));
+        destination.setBalance(destination.getBalance().add(targetAmount));
 
         accountRepository.save(source);
         accountRepository.save(destination);
 
+        // ---- Record both transactions ----
         recordTransaction(source, TransactionType.WITHDRAWAL, amount,
                 "Transfer out: " + request.getDescription());
-        recordTransaction(destination, TransactionType.DEPOSIT, amount,
-                "Transfer in: " + request.getDescription());
+        recordTransaction(destination, TransactionType.DEPOSIT, targetAmount,
+                "Transfer in: " + request.getDescription()
+                        + (sourceCurrency.equals(targetCurrency)
+                        ? ""
+                        : " (FX rate: " + fxRate + " " + sourceCurrency + "/" + targetCurrency + ")"));
 
+        // ---- Build Transfer entity ----
         Transfer transfer = new Transfer();
         transfer.setFromAccountId(source.getId());
         transfer.setToAccountId(destination.getId());
         transfer.setAmount(amount);
         transfer.setDescription(request.getDescription());
+        transfer.setSourceCurrency(sourceCurrency);
+        transfer.setTargetCurrency(targetCurrency);
+        transfer.setSourceAmount(amount);
+        transfer.setTargetAmount(targetAmount);
+        transfer.setFxRate(fxRate);
+
         Transfer savedTransfer = transferRepository.save(transfer);
 
+        // ---- Publish Kafka event ----
         eventPublisher.publishMoneyTransferred(new MoneyTransferredEvent(
                 savedTransfer.getId(),
                 savedTransfer.getFromAccountId(),
@@ -127,15 +162,22 @@ public class TransferService {
                 savedTransfer.getDescription()
         ));
 
+        // ---- Build response ----
         TransferResponse response = new TransferResponse(
                 savedTransfer.getId(),
                 savedTransfer.getFromAccountId(),
                 savedTransfer.getToAccountId(),
                 savedTransfer.getAmount(),
                 savedTransfer.getStatus().name(),
-                savedTransfer.getCreatedAt()
+                savedTransfer.getCreatedAt(),
+                savedTransfer.getSourceCurrency(),
+                savedTransfer.getTargetCurrency(),
+                savedTransfer.getSourceAmount(),
+                savedTransfer.getTargetAmount(),
+                savedTransfer.getFxRate()
         );
 
+        // ---- Cache idempotency ----
         if (idempotencyKey != null && !idempotencyKey.isBlank()) {
             try {
                 IdempotencyRecord record = new IdempotencyRecord();
@@ -143,7 +185,7 @@ public class TransferService {
                 record.setResponseJson(objectMapper.writeValueAsString(response));
                 record.setResponseStatus(201);
                 idempotencyRepository.save(record);
-                log.info("💾 Cached response for key: {}", idempotencyKey);
+                log.info(" Cached response for key: {}", idempotencyKey);
             } catch (Exception e) {
                 log.warn("Failed to cache idempotency record: {}", e.getMessage());
             }
@@ -152,9 +194,6 @@ public class TransferService {
         return response;
     }
 
-    // =========================================================
-    // Reversal / Refund
-    // =========================================================
     @Transactional
     public TransferResponse reverseTransfer(UUID transferId, String reason) {
 
@@ -178,7 +217,14 @@ public class TransferService {
 
         UUID fromId = original.getFromAccountId();
         UUID toId = original.getToAccountId();
-        BigDecimal amount = original.getAmount();
+
+        // Amount returned to source = original sourceAmount (in source currency)
+        BigDecimal sourceAmount = original.getSourceAmount() != null
+                ? original.getSourceAmount() : original.getAmount();
+
+        // Amount taken from destination = original targetAmount (in target currency)
+        BigDecimal targetAmount = original.getTargetAmount() != null
+                ? original.getTargetAmount() : original.getAmount();
 
         UUID firstId  = fromId.compareTo(toId) < 0 ? fromId : toId;
         UUID secondId = fromId.compareTo(toId) < 0 ? toId : fromId;
@@ -191,21 +237,21 @@ public class TransferService {
         Account originalSource = fromId.equals(first.getId()) ? first : second;
         Account originalDestination = toId.equals(first.getId()) ? first : second;
 
-        // Destination must have the funds to send back
-        if (originalDestination.getBalance().compareTo(amount) < 0) {
-            throw new InsufficientFundsException(originalDestination.getBalance(), amount);
+        // Destination must have the targetAmount to send back
+        if (originalDestination.getBalance().compareTo(targetAmount) < 0) {
+            throw new InsufficientFundsException(originalDestination.getBalance(), targetAmount);
         }
 
-        // Reverse: destination → source
-        originalDestination.setBalance(originalDestination.getBalance().subtract(amount));
-        originalSource.setBalance(originalSource.getBalance().add(amount));
+        // Reverse money
+        originalDestination.setBalance(originalDestination.getBalance().subtract(targetAmount));
+        originalSource.setBalance(originalSource.getBalance().add(sourceAmount));
 
         accountRepository.save(originalDestination);
         accountRepository.save(originalSource);
 
-        recordTransaction(originalDestination, TransactionType.WITHDRAWAL, amount,
+        recordTransaction(originalDestination, TransactionType.WITHDRAWAL, targetAmount,
                 "Reversal out: " + reason);
-        recordTransaction(originalSource, TransactionType.DEPOSIT, amount,
+        recordTransaction(originalSource, TransactionType.DEPOSIT, sourceAmount,
                 "Reversal in: " + reason);
 
         original.setStatus(TransferStatus.REVERSED);
@@ -227,7 +273,12 @@ public class TransferService {
                 savedOriginal.getToAccountId(),
                 savedOriginal.getAmount(),
                 savedOriginal.getStatus().name(),
-                savedOriginal.getCreatedAt()
+                savedOriginal.getCreatedAt(),
+                savedOriginal.getSourceCurrency(),
+                savedOriginal.getTargetCurrency(),
+                savedOriginal.getSourceAmount(),
+                savedOriginal.getTargetAmount(),
+                savedOriginal.getFxRate()
         );
     }
     private void validateAmount(BigDecimal amount) {

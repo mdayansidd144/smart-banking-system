@@ -1,14 +1,22 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 @layer base {
   body {
-    @apply antialiased font-sans text-slate-800;
-    background: linear-gradient(135deg, #dbeafe 0%, #e0eaff 40%, #eef4ff 100%);
+    @apply antialiased font-sans text-slate-800 dark:text-slate-100;
+    background: linear-gradient(135deg, #e8eaf0 0%, #e2e5ed 50%, #e9ebf0 100%);
     background-attachment: fixed;
     min-height: 100vh;
   }
+
+  html.dark body {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    background-attachment: fixed;
+  }
+
   html, body, #root {
     height: 100%;
     margin: 0;
@@ -16,29 +24,132 @@
 }
 
 @layer components {
+  /* ---------- CARDS ---------- */
   .card {
-    @apply bg-gradient-to-br from-white to-blue-50/40 rounded-xl border border-blue-100;
-    box-shadow: 0 1px 3px 0 rgb(37 99 235 / 0.05), 0 1px 2px -1px rgb(37 99 235 / 0.04);
-    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    @apply rounded-xl relative
+           border border-slate-200 dark:border-slate-700;
+    background: linear-gradient(135deg, #ffffff 0%, #fafbfd 100%);
+    box-shadow:
+      0 1px 2px 0 rgb(100 116 139 / 0.06),
+      0 2px 8px -2px rgb(100 116 139 / 0.08);
+    transition: all 350ms cubic-bezier(0.4, 0, 0.2, 1);
+    /* Curvy blob accents — do NOT affect layout */
+    background-image:
+      radial-gradient(circle 220px at top right, rgba(59, 130, 246, 0.08), transparent 60%),
+      radial-gradient(circle 180px at bottom left, rgba(99, 102, 241, 0.05), transparent 65%),
+      linear-gradient(135deg, #ffffff 0%, #fafbfd 100%);
   }
-  .card-hover:hover {
-    @apply border-blue-200;
-    box-shadow: 0 10px 25px -5px rgb(37 99 235 / 0.15), 0 8px 10px -6px rgb(37 99 235 / 0.1);
-    transform: translateY(-2px);
-  }
-  .card-header {
-    @apply px-6 py-4 border-b border-blue-100/70 flex items-center justify-between;
-  }
-  .card-title {
-    @apply text-sm font-semibold text-slate-800 uppercase tracking-wide;
-  }
-  .card-body {
-    @apply p-6;
+  .dark .card {
+    background-image:
+      radial-gradient(circle 220px at top right, rgba(59, 130, 246, 0.12), transparent 60%),
+      radial-gradient(circle 180px at bottom left, rgba(139, 92, 246, 0.08), transparent 65%),
+      linear-gradient(135deg, #1e293b 0%, #1a2332 100%);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.2);
   }
 
+  .card-hover:hover {
+    @apply border-slate-300 dark:border-slate-600;
+    background-image:
+      radial-gradient(circle 260px at top right, rgba(59, 130, 246, 0.14), transparent 60%),
+      radial-gradient(circle 200px at bottom left, rgba(99, 102, 241, 0.08), transparent 65%),
+      linear-gradient(135deg, #ffffff 0%, #fafbfd 100%);
+    box-shadow:
+      0 4px 8px -2px rgb(100 116 139 / 0.1),
+      0 12px 28px -8px rgb(100 116 139 / 0.15);
+    transform: translateY(-3px);
+  }
+  .dark .card-hover:hover {
+    background-image:
+      radial-gradient(circle 260px at top right, rgba(59, 130, 246, 0.18), transparent 60%),
+      radial-gradient(circle 200px at bottom left, rgba(139, 92, 246, 0.12), transparent 65%),
+      linear-gradient(135deg, #1e293b 0%, #1a2332 100%);
+    box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+  }
+
+  .card-header {
+    @apply px-6 py-4 border-b border-slate-100/80 dark:border-slate-700 flex items-center justify-between relative z-10;
+  }
+  .card-title {
+    @apply text-sm font-semibold text-slate-800 dark:text-slate-200 uppercase tracking-wide;
+  }
+  .card-body {
+    @apply p-6 relative z-10;
+  }
+
+  /* ---------- CARD COLOR TINTS ---------- */
+  .card-tint-blue {
+    background-image:
+      radial-gradient(circle 220px at top right, rgba(59, 130, 246, 0.15), transparent 60%),
+      linear-gradient(135deg, #e8f1ff 0%, #dfe9fa 100%);
+    border-color: #c7dbf5;
+  }
+  .card-tint-pink {
+    background-image:
+      radial-gradient(circle 220px at top right, rgba(236, 72, 153, 0.15), transparent 60%),
+      linear-gradient(135deg, #ffeaf3 0%, #fadde9 100%);
+    border-color: #f7c8dd;
+  }
+  .card-tint-green {
+    background-image:
+      radial-gradient(circle 220px at top right, rgba(16, 185, 129, 0.15), transparent 60%),
+      linear-gradient(135deg, #e7f7ee 0%, #dcf1e5 100%);
+    border-color: #c5e7d4;
+  }
+  .card-tint-hazel {
+    background-image:
+      radial-gradient(circle 220px at top right, rgba(180, 130, 70, 0.15), transparent 60%),
+      linear-gradient(135deg, #f7f0e2 0%, #efe3cf 100%);
+    border-color: #dfd0b3;
+  }
+  .card-tint-sapphire {
+    background-image:
+      radial-gradient(circle 220px at top right, rgba(30, 64, 175, 0.15), transparent 60%),
+      linear-gradient(135deg, #e2eaf7 0%, #d2dcf0 100%);
+    border-color: #b6c6e0;
+  }
+  .card-tint-ruby {
+    background-image:
+      radial-gradient(circle 220px at top right, rgba(220, 38, 38, 0.15), transparent 60%),
+      linear-gradient(135deg, #fbe5e8 0%, #f4d4d8 100%);
+    border-color: #eab8be;
+  }
+  .card-tint-amber {
+    background-image:
+      radial-gradient(circle 220px at top right, rgba(245, 158, 11, 0.15), transparent 60%),
+      linear-gradient(135deg, #fef3e0 0%, #fbe6c9 100%);
+    border-color: #f2d19f;
+  }
+  .card-tint-violet {
+    background-image:
+      radial-gradient(circle 220px at top right, rgba(139, 92, 246, 0.15), transparent 60%),
+      linear-gradient(135deg, #f2eafb 0%, #e6dcf5 100%);
+    border-color: #d1bfe9;
+  }
+  .card-tint-teal {
+    background-image:
+      radial-gradient(circle 220px at top right, rgba(20, 184, 166, 0.15), transparent 60%),
+      linear-gradient(135deg, #e3f5f5 0%, #d5eded 100%);
+    border-color: #b8dad8;
+  }
+
+  /* Keep header readable on tinted cards */
+  .card-tint-blue .card-header,
+  .card-tint-pink .card-header,
+  .card-tint-green .card-header,
+  .card-tint-hazel .card-header,
+  .card-tint-sapphire .card-header,
+  .card-tint-ruby .card-header,
+  .card-tint-amber .card-header,
+  .card-tint-violet .card-header,
+  .card-tint-teal .card-header {
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(6px);
+  }
+
+  /* ---------- BUTTONS ---------- */
   .btn {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm;
-    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   .btn:active:not(:disabled) {
     transform: scale(0.97);
@@ -46,6 +157,7 @@
   .btn:disabled {
     @apply opacity-50 cursor-not-allowed;
   }
+
   .btn-primary {
     @apply text-white;
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
@@ -56,50 +168,66 @@
     box-shadow: 0 4px 12px -1px rgb(37 99 235 / 0.35), 0 6px 20px -4px rgb(37 99 235 / 0.25);
     transform: translateY(-1px);
   }
+
   .btn-ghost {
-    @apply bg-white text-slate-700 border border-blue-200;
+    @apply bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200
+           border border-slate-200 dark:border-slate-600;
+    box-shadow: 0 1px 2px 0 rgb(100 116 139 / 0.04);
   }
   .btn-ghost:hover:not(:disabled) {
-    @apply bg-blue-50 border-blue-300 text-brand-700;
-    box-shadow: 0 2px 8px -2px rgb(37 99 235 / 0.15);
+    @apply bg-slate-50 dark:bg-slate-700 border-slate-300 dark:border-slate-500 text-brand-700 dark:text-brand-300;
+    box-shadow: 0 2px 8px -2px rgb(100 116 139 / 0.15);
     transform: translateY(-1px);
   }
+
   .btn-sm {
     @apply px-3 py-1.5 text-xs;
   }
 
+  /* ---------- BADGES ---------- */
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
     transition: all 150ms ease;
   }
-  .badge-low      { @apply bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100; }
-  .badge-medium   { @apply bg-amber-50 text-amber-700 ring-1 ring-amber-100; }
-  .badge-high     { @apply bg-orange-50 text-orange-700 ring-1 ring-orange-100; }
-  .badge-critical { @apply bg-rose-50 text-rose-700 ring-1 ring-rose-100; }
-  .badge-gray     { @apply bg-slate-100 text-slate-600 ring-1 ring-slate-200; }
+  .badge-low      { @apply bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-100 dark:ring-emerald-700/50; }
+  .badge-medium   { @apply bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 ring-1 ring-amber-100 dark:ring-amber-700/50; }
+  .badge-high     { @apply bg-orange-50 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 ring-1 ring-orange-100 dark:ring-orange-700/50; }
+  .badge-critical { @apply bg-rose-50 dark:bg-rose-900/40 text-rose-700 dark:text-rose-300 ring-1 ring-rose-100 dark:ring-rose-700/50; }
+  .badge-gray     { @apply bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-600; }
 
+  /* ---------- INPUTS ---------- */
   .input {
-    @apply w-full px-3 py-2.5 text-sm border border-blue-200 rounded-lg bg-white text-slate-900;
-    transition: all 200ms ease;
+    @apply w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg
+           bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100
+           placeholder:text-slate-400 dark:placeholder:text-slate-500;
+    transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: inset 0 1px 2px 0 rgb(100 116 139 / 0.04);
   }
   .input:hover {
-    @apply border-blue-300;
+    @apply border-slate-300 dark:border-slate-500;
   }
   .input:focus {
-    @apply outline-none border-brand-500;
-    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15);
+    @apply outline-none border-brand-500 dark:border-brand-400;
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15), inset 0 1px 2px 0 rgb(100 116 139 / 0.04);
+  }
+  .dark .input:focus {
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.25);
   }
 
+  /* ---------- SKELETON ---------- */
   .skeleton {
-    @apply bg-gradient-to-r from-blue-100 via-blue-50 to-blue-100 rounded;
+    @apply bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200
+           dark:from-slate-700 dark:via-slate-600 dark:to-slate-700 rounded;
     background-size: 1000px 100%;
     @apply animate-shimmer;
   }
 
+  /* ---------- ROW HOVER ---------- */
   .row-hover {
-    transition: all 200ms ease;
+    transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
   }
   .row-hover:hover {
-    @apply bg-blue-50/60;
+    @apply bg-slate-100/70 dark:bg-slate-700/50;
+    transform: translateX(2px);
   }
 }

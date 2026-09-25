@@ -1,4 +1,5 @@
 package com.smartbank.notification;
+
 import com.smartbank.notification.event.*;
 import com.smartbank.notification.service.EmailService;
 import org.slf4j.Logger;
@@ -46,7 +47,7 @@ public class EventConsumer {
         emailService.sendEmail(
                 "ACCOUNT_CREATED",
                 "account-created",
-                "Welcome to Smart Bank — Account " + event.getAccountNumber(),
+                "Welcome to Smart Bank - Account " + event.getAccountNumber(),
                 vars
         );
     }
@@ -77,7 +78,7 @@ public class EventConsumer {
         emailService.sendEmailWithPriority(
                 "DEPOSIT",
                 "deposit",
-                "Deposit of ₹" + event.getAmount() + " received",
+                "Deposit of Rs. " + event.getAmount() + " received",
                 urgent,
                 vars
         );
@@ -90,6 +91,36 @@ public class EventConsumer {
                     "spring.json.value.default.type=com.smartbank.notification.event.MoneyWithdrawnEvent"
             }
     )
+    public void onBudgetAlert(@Payload BudgetAlertEvent event) {
+        log.info(" [EVENT] Budget alert: category={}, status={}, used={}%",
+                event.getCategory(), event.getStatus(), event.getPercentageUsed());
+
+        try {
+            String subject = "EXCEEDED".equals(event.getStatus())
+                    ? "Budget EXCEEDED for " + event.getCategory()
+                    : "Budget warning for " + event.getCategory();
+
+            Map<String, Object> vars = new HashMap<>();
+            vars.put("category", event.getCategory());
+            vars.put("monthlyLimit", event.getMonthlyLimit());
+            vars.put("currentSpend", event.getCurrentSpend());
+            vars.put("percentageUsed", event.getPercentageUsed());
+            vars.put("status", event.getStatus());
+            vars.put("timestamp", LocalDateTime.now().format(FMT));
+
+            boolean urgent = "EXCEEDED".equals(event.getStatus());
+
+            emailService.sendEmailWithPriority(
+                    "BUDGET_ALERT",
+                    "budget-alert",
+                    subject,
+                    urgent,
+                    vars
+            );
+        } catch (Exception e) {
+            log.error("Failed to send budget alert email: {}", e.getMessage(), e);
+        }
+    }
     public void onMoneyWithdrawn(@Payload MoneyWithdrawnEvent event) {
         log.info(" [EVENT] Withdrawal: account={}, amount={}",
                 event.getAccountId(), event.getAmount());
@@ -109,7 +140,7 @@ public class EventConsumer {
         emailService.sendEmailWithPriority(
                 "WITHDRAWAL",
                 "withdrawal",
-                "Withdrawal of ₹" + event.getAmount() + " processed",
+                "Withdrawal of Rs. " + event.getAmount() + " processed",
                 urgent,
                 vars
         );
@@ -141,9 +172,28 @@ public class EventConsumer {
         emailService.sendEmailWithPriority(
                 "TRANSFER",
                 "transfer",
-                "Transfer of ₹" + event.getAmount() + " completed",
+                "Transfer of Rs. " + event.getAmount() + " completed",
                 urgent,
                 vars
         );
+    }
+
+    @KafkaListener(
+            topics = "statement.requested",
+            groupId = "notification-group",
+            properties = {
+                    "spring.json.value.default.type=com.smartbank.notification.event.StatementRequestedEvent"
+            }
+    )
+    public void onStatementRequested(@Payload StatementRequestedEvent event) {
+        log.info(" [EVENT] Statement requested: account={}, recipient={}, from={}, to={}",
+                event.getAccountId(), event.getRecipientEmail(),
+                event.getFromDate(), event.getToDate());
+
+        try {
+            emailService.sendStatementEmail(event);
+        } catch (Exception e) {
+            log.error("Failed to send statement email: {}", e.getMessage(), e);
+        }
     }
 }
