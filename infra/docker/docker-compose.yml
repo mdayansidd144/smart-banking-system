@@ -105,6 +105,20 @@ services:
         condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/smartbank
+      GOOGLE_CLIENT_ID: "359956866475-2afr1g9t6ppes48844kbji7j14s6k05b.apps.googleusercontent.com"
+    volumes:
+      - identity_uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+    container_name: smartbank-frontend
+    restart: unless-stopped
+    ports:
+      - "3300:80"
+    depends_on:
+      - api-gateway
 
   api-gateway:
     build:
@@ -120,19 +134,22 @@ services:
       - fraud-service
       - identity-service
     environment:
-      # Route 0 — identity-service (public auth endpoints)
+      # Route 0 — identity-service (strip /api prefix on the way in)
       SPRING_CLOUD_GATEWAY_ROUTES_0_ID: identity-service
       SPRING_CLOUD_GATEWAY_ROUTES_0_URI: http://identity-service:8083
-      SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: Path=/auth/**
+      SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: Path=/api/auth/**,/api/files/**
+      SPRING_CLOUD_GATEWAY_ROUTES_0_FILTERS_0: StripPrefix=1
 
       # Route 1 — account-service (accounts + transfers)
       SPRING_CLOUD_GATEWAY_ROUTES_1_ID: account-service
       SPRING_CLOUD_GATEWAY_ROUTES_1_URI: http://account-service:8080
       SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0: Path=/api/v1/accounts/**,/api/v1/transfers/**,/api/v1/scheduled-transfers/**
-      # Route 2 — fraud-service (fraud alerts + AI queries)
+
+      # Route 2 — fraud-service (fraud + AI queries)
       SPRING_CLOUD_GATEWAY_ROUTES_2_ID: fraud-service
       SPRING_CLOUD_GATEWAY_ROUTES_2_URI: http://fraud-service:8082
-      SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0: Path=/api/v1/fraud/**
+      SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0: Path=/api/v1/fraud/**,/api/v1/anomalies/**,/api/v1/loans/**,/api/v1/agent/**
+
   prometheus:
     image: prom/prometheus:latest
     container_name: smartbank-prometheus
@@ -170,8 +187,10 @@ services:
       - grafana_data:/var/lib/grafana
     depends_on:
       - prometheus
+
 volumes:
   postgres_data:
   kafka_data:
   prometheus_data:
   grafana_data:
+  identity_uploads:

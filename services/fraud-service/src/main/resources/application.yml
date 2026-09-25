@@ -38,7 +38,7 @@ langchain4j:
       base-url: http://host.docker.internal:11434
       model-name: llama3.2:latest
       temperature: 0.2
-      timeout: PT60S
+      timeout: PT180S
 
 management:
   endpoints:
@@ -55,6 +55,7 @@ management:
 logging:
   level:
     com.smartbank.fraud: DEBUG
+    com.smartbank.fraud.ai: DEBUG
     dev.langchain4j: INFO
     org.apache.kafka: WARN
     org.springframework.kafka: WARN
