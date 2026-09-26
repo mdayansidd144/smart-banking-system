@@ -12,20 +12,19 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
 @Component
 public class AnomalyDetectionConsumer {
-
     private static final Logger log = LoggerFactory.getLogger(AnomalyDetectionConsumer.class);
-
     public static final String TOPIC_ANOMALY_DETECTED = "anomaly.detected";
-
     private final AnomalyRulesEngine engine;
     private final AnomalyAlertRepository repository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
-
+    private final RestTemplate restTemplate = new RestTemplate();
     public AnomalyDetectionConsumer(AnomalyRulesEngine engine,
                                     AnomalyAlertRepository repository,
                                     KafkaTemplate<String, Object> kafkaTemplate) {
@@ -88,7 +87,6 @@ public class AnomalyDetectionConsumer {
                     relatedAccountId, amount);
             AnomalyAlert saved = repository.save(alert);
 
-            // Publish to Kafka for downstream consumers (notifications, etc.)
             AnomalyDetectedEvent detected = new AnomalyDetectedEvent(
                     saved.getId(),
                     saved.getAccountId(),
@@ -109,9 +107,26 @@ public class AnomalyDetectionConsumer {
                     saved.getAccountId(),
                     saved.getRuleTriggered());
 
+            // AUTO-FREEZE if CRITICAL severity
+            if ("CRITICAL".equals(saved.getSeverity().name())) {
+                autoFreezeAccount(saved.getAccountId(),
+                        "Critical anomaly: " + saved.getRuleTriggered());
+            }
+
         } catch (Exception e) {
             log.error(" Anomaly check failed for {} on {}: {}",
                     eventType, accountId, e.getMessage(), e);
+        }
+    }
+    private void autoFreezeAccount(UUID accountId, String reason) {
+        try {
+            String url = "http://account-service:8080/api/v1/accounts/"
+                    + accountId + "/freeze";
+            Map<String, String> body = Map.of("reason", "AUTO-FREEZE: " + reason);
+            restTemplate.postForEntity(url, body, String.class);
+            log.warn("️ AUTO-FROZE account {} — reason: {}", accountId, reason);
+        } catch (Exception e) {
+            log.error("Failed to auto-freeze account {}: {}", accountId, e.getMessage());
         }
     }
 }

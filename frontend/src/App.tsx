@@ -17,13 +17,12 @@ import KycPage from './pages/KycPage';
 import AdminKycPage from './pages/AdminKycPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
-
+import LoanAmortizationPage from './pages/LoanAmortizationPage';
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
-
       <Route
         path="/"
         element={
@@ -46,6 +45,7 @@ export default function App() {
         <Route path="settings" element={<SettingsPage />} />
         <Route path="kyc" element={<KycPage />} />
         <Route path="admin/kyc" element={<AdminKycPage />} />
+        <Route path="/loans/:id/amortization" element={<LoanAmortizationPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

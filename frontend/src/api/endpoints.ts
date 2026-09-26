@@ -96,3 +96,42 @@ export const emailStatement = async (
   );
   return data;
 };
+export const freezeAccount = async (
+  id: string,
+  reason: string
+): Promise<Account> => {
+  const { data } = await client.post(`/v1/accounts/${id}/freeze`, { reason });
+  return data;
+};
+
+export const unfreezeAccount = async (id: string): Promise<Account> => {
+  const { data } = await client.post(`/v1/accounts/${id}/unfreeze`);
+  return data;
+};
+export interface AmortizationEntry {
+  month: number;
+  emi: number;
+  principalComponent: number;
+  interestComponent: number;
+  remainingBalance: number;
+  cumulativeInterest: number;
+}
+
+export interface AmortizationSchedule {
+  loanId: string;
+  accountId: string;
+  principal: number;
+  annualInterestRate: number;
+  termMonths: number;
+  monthlyEmi: number;
+  totalInterest: number;
+  totalPayment: number;
+  entries: AmortizationEntry[];
+}
+
+export const getAmortization = async (
+  loanId: string
+): Promise<AmortizationSchedule> => {
+  const { data } = await client.get(`/v1/loans/${loanId}/amortization`);
+  return data;
+};

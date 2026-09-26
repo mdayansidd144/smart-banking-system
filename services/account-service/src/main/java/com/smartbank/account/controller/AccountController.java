@@ -111,7 +111,6 @@ public class AccountController {
         Account account = accountRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Account not found: " + id));
 
-        // Recipient: from body if provided, otherwise a placeholder
         String recipient = (body != null && body.get("email") != null && !body.get("email").isBlank())
                 ? body.get("email")
                 : account.getOwnerName().toLowerCase().replace(" ", "") + "@example.com";
@@ -132,5 +131,22 @@ public class AccountController {
                 "message", "Statement will be emailed to " + recipient,
                 "requestId", requestId.toString()
         ));
+    }
+
+    @PostMapping("/{id}/freeze")
+    @Auditable(action = AuditAction.FREEZE_ACCOUNT, accountIdParam = "id", resourceType = "ACCOUNT")
+    public ResponseEntity<AccountResponse> freeze(
+            @PathVariable UUID id,
+            @RequestBody(required = false) Map<String, String> body) {
+        String reason = (body != null && body.get("reason") != null)
+                ? body.get("reason")
+                : "Manual freeze by ops";
+        return ResponseEntity.ok(service.freezeAccount(id, reason));
+    }
+
+    @PostMapping("/{id}/unfreeze")
+    @Auditable(action = AuditAction.UPDATE_ACCOUNT, accountIdParam = "id", resourceType = "ACCOUNT")
+    public ResponseEntity<AccountResponse> unfreeze(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.unfreezeAccount(id));
     }
 }

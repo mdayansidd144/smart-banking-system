@@ -24,7 +24,7 @@ export default function Layout() {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header
-          className="h-16 backdrop-blur-md border-b border-blue-300/60 dark:border-slate-700 flex items-center px-6 justify-between shadow-sm dark:bg-slate-800/70"
+          className="h-16 backdrop-blur-md border-b border-blue-300/60 dark:border-slate-700 flex items-center px-6 justify-between shadow-sm dark:bg-slate-800/70 relative z-50"
           style={{
             background: 'linear-gradient(180deg, #c8dcf5 0%, #d9e7f7 100%)',
           }}

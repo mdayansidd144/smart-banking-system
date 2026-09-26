@@ -1,4 +1,5 @@
 package com.smartbank.account.event;
+
 import com.smartbank.account.bill.BillAlertEvent;
 import com.smartbank.account.budget.BudgetAlertEvent;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -15,6 +16,7 @@ public class EventPublisher {
     public static final String TOPIC_STATEMENT_REQUESTED = "statement.requested";
     public static final String TOPIC_BUDGET_ALERT = "budget.alert";
     public static final String TOPIC_BILL_ALERT = "bill.alert";
+    public static final String TOPIC_ACCOUNT_FROZEN = "account.frozen";
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -52,5 +54,9 @@ public class EventPublisher {
 
     public void publishBillAlert(BillAlertEvent event) {
         kafkaTemplate.send(TOPIC_BILL_ALERT, event.getBillId().toString(), event);
+    }
+
+    public void publishAccountFrozen(AccountFrozenEvent event) {
+        kafkaTemplate.send(TOPIC_ACCOUNT_FROZEN, event.getAccountId().toString(), event);
     }
 }

@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { applyForLoan, getAccounts, getLoans, type LoanResponse } from '../api/endpoints';
+import { Link } from 'react-router-dom';
+import {
+  applyForLoan,
+  getAccounts,
+  getLoans,
+  type LoanResponse,
+} from '../api/endpoints';
 import AiProgressPanel from '../components/AiProgressPanel';
 
 export default function LoanPage() {
@@ -53,9 +59,12 @@ export default function LoanPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto animate-fade-in">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">AI Loan Application</h2>
+        <h2 className="text-2xl font-bold text-slate-900">
+          AI Loan Application
+        </h2>
         <p className="text-sm text-slate-600 mt-1">
-          Submit a loan request — our AI credit analyst will evaluate it in real time
+          Submit a loan request — our AI credit analyst will evaluate it in real
+          time
         </p>
       </div>
 
@@ -184,7 +193,10 @@ export default function LoanPage() {
           ) : (
             <ul className="divide-y divide-blue-50">
               {(loansQ.data ?? []).slice(0, 8).map((l) => (
-                <li key={l.id} className="py-3 flex items-center justify-between row-hover -mx-6 px-6 rounded-lg transition-all">
+                <li
+                  key={l.id}
+                  className="py-3 flex items-center justify-between row-hover -mx-6 px-6 rounded-lg transition-all"
+                >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className={decisionBadge(l.decision)}>
@@ -210,6 +222,14 @@ export default function LoanPage() {
                         month: 'short',
                       })}
                     </div>
+                    {l.decision === 'APPROVED' && (
+                      <Link
+                        to={`/loans/${l.id}/amortization`}
+                        className="text-xs text-brand-600 hover:text-brand-700 font-semibold mt-1 inline-block"
+                      >
+                         View Schedule →
+                      </Link>
+                    )}
                   </div>
                 </li>
               ))}
@@ -222,27 +242,30 @@ export default function LoanPage() {
 }
 
 function decisionBadge(decision: string) {
-  const cls = {
-    APPROVED: 'badge-low',
-    MANUAL_REVIEW: 'badge-medium',
-    REJECTED: 'badge-critical',
-  }[decision] || 'badge-gray';
+  const cls =
+    {
+      APPROVED: 'badge-low',
+      MANUAL_REVIEW: 'badge-medium',
+      REJECTED: 'badge-critical',
+    }[decision] || 'badge-gray';
   return `badge ${cls}`;
 }
 
 function ResultCard({ result }: { result: LoanResponse }) {
-  const accent = {
-    APPROVED: 'emerald',
-    MANUAL_REVIEW: 'amber',
-    REJECTED: 'rose',
-  }[result.decision] || 'blue';
+  const accent =
+    {
+      APPROVED: 'emerald',
+      MANUAL_REVIEW: 'amber',
+      REJECTED: 'rose',
+    }[result.decision] || 'blue';
 
-  const accentBorder = {
-    emerald: 'border-emerald-200 bg-gradient-to-br from-emerald-50/60 to-white',
-    amber: 'border-amber-200 bg-gradient-to-br from-amber-50/60 to-white',
-    rose: 'border-rose-200 bg-gradient-to-br from-rose-50/60 to-white',
-    blue: 'border-blue-200',
-  }[accent];
+  const accentBorder =
+    {
+      emerald: 'border-emerald-200 bg-gradient-to-br from-emerald-50/60 to-white',
+      amber: 'border-amber-200 bg-gradient-to-br from-amber-50/60 to-white',
+      rose: 'border-rose-200 bg-gradient-to-br from-rose-50/60 to-white',
+      blue: 'border-blue-200',
+    }[accent];
 
   return (
     <div className={`card card-hover ${accentBorder} animate-fade-in`}>
@@ -293,6 +316,17 @@ function ResultCard({ result }: { result: LoanResponse }) {
             {result.reasoning}
           </div>
         </div>
+
+        {result.decision === 'APPROVED' && (
+          <div className="pt-4 border-t border-blue-100">
+            <Link
+              to={`/loans/${result.id}/amortization`}
+              className="btn btn-primary w-full"
+            >
+               View Amortization Schedule
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

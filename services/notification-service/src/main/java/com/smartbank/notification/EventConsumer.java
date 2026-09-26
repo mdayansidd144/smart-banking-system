@@ -1,5 +1,4 @@
 package com.smartbank.notification;
-
 import com.smartbank.notification.event.*;
 import com.smartbank.notification.service.EmailService;
 import org.slf4j.Logger;
@@ -7,7 +6,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -91,36 +89,6 @@ public class EventConsumer {
                     "spring.json.value.default.type=com.smartbank.notification.event.MoneyWithdrawnEvent"
             }
     )
-    public void onBudgetAlert(@Payload BudgetAlertEvent event) {
-        log.info(" [EVENT] Budget alert: category={}, status={}, used={}%",
-                event.getCategory(), event.getStatus(), event.getPercentageUsed());
-
-        try {
-            String subject = "EXCEEDED".equals(event.getStatus())
-                    ? "Budget EXCEEDED for " + event.getCategory()
-                    : "Budget warning for " + event.getCategory();
-
-            Map<String, Object> vars = new HashMap<>();
-            vars.put("category", event.getCategory());
-            vars.put("monthlyLimit", event.getMonthlyLimit());
-            vars.put("currentSpend", event.getCurrentSpend());
-            vars.put("percentageUsed", event.getPercentageUsed());
-            vars.put("status", event.getStatus());
-            vars.put("timestamp", LocalDateTime.now().format(FMT));
-
-            boolean urgent = "EXCEEDED".equals(event.getStatus());
-
-            emailService.sendEmailWithPriority(
-                    "BUDGET_ALERT",
-                    "budget-alert",
-                    subject,
-                    urgent,
-                    vars
-            );
-        } catch (Exception e) {
-            log.error("Failed to send budget alert email: {}", e.getMessage(), e);
-        }
-    }
     public void onMoneyWithdrawn(@Payload MoneyWithdrawnEvent event) {
         log.info(" [EVENT] Withdrawal: account={}, amount={}",
                 event.getAccountId(), event.getAmount());
@@ -194,6 +162,126 @@ public class EventConsumer {
             emailService.sendStatementEmail(event);
         } catch (Exception e) {
             log.error("Failed to send statement email: {}", e.getMessage(), e);
+        }
+    }
+    @KafkaListener(
+            topics = "budget.alert",
+            groupId = "notification-group",
+            properties = {
+                    "spring.json.value.default.type=com.smartbank.notification.event.BudgetAlertEvent"
+            }
+    )
+    public void onBudgetAlert(@Payload BudgetAlertEvent event) {
+        log.info(" [EVENT] Budget alert: category={}, status={}, used={}%",
+                event.getCategory(), event.getStatus(), event.getPercentageUsed());
+
+        try {
+            String subject = "EXCEEDED".equals(event.getStatus())
+                    ? "Budget EXCEEDED for " + event.getCategory()
+                    : "Budget warning for " + event.getCategory();
+
+            Map<String, Object> vars = new HashMap<>();
+            vars.put("category", event.getCategory());
+            vars.put("monthlyLimit", event.getMonthlyLimit());
+            vars.put("currentSpend", event.getCurrentSpend());
+            vars.put("percentageUsed", event.getPercentageUsed());
+            vars.put("status", event.getStatus());
+            vars.put("timestamp", LocalDateTime.now().format(FMT));
+
+            boolean urgent = "EXCEEDED".equals(event.getStatus());
+
+            emailService.sendEmailWithPriority(
+                    "BUDGET_ALERT",
+                    "budget-alert",
+                    subject,
+                    urgent,
+                    vars
+            );
+        } catch (Exception e) {
+            log.error("Failed to send budget alert email: {}", e.getMessage(), e);
+        }
+    }
+    @KafkaListener(
+            topics = "bill.alert",
+            groupId = "notification-group",
+            properties = {
+                    "spring.json.value.default.type=com.smartbank.notification.event.BillAlertEvent"
+            }
+    )
+    public void onBillAlert(@Payload BillAlertEvent event) {
+        log.info(" [EVENT] Bill alert: biller={}, type={}, amount={}",
+                event.getBillerName(), event.getAlertType(), event.getAmount());
+
+        try {
+            String subject;
+            boolean urgent;
+            switch (event.getAlertType()) {
+                case "REMINDER":
+                    subject = "Reminder: " + event.getBillerName() + " bill due soon";
+                    urgent = false;
+                    break;
+                case "PAID":
+                    subject = "Bill paid: " + event.getBillerName();
+                    urgent = false;
+                    break;
+                case "FAILED":
+                    subject = "Bill payment FAILED: " + event.getBillerName();
+                    urgent = true;
+                    break;
+                default:
+                    subject = "Bill alert: " + event.getBillerName();
+                    urgent = false;
+            }
+
+            Map<String, Object> vars = new HashMap<>();
+            vars.put("billId", event.getBillId());
+            vars.put("billerName", event.getBillerName());
+            vars.put("category", event.getCategory());
+            vars.put("accountNumber", event.getAccountNumber());
+            vars.put("amount", event.getAmount());
+            vars.put("dueDate", event.getDueDate());
+            vars.put("alertType", event.getAlertType());
+            vars.put("timestamp", LocalDateTime.now().format(FMT));
+
+            emailService.sendEmailWithPriority(
+                    "BILL_ALERT",
+                    "bill-alert",
+                    subject,
+                    urgent,
+                    vars
+            );
+        } catch (Exception e) {
+            log.error("Failed to send bill alert email: {}", e.getMessage(), e);
+        }
+    }
+    @KafkaListener(
+            topics = "account.frozen",
+            groupId = "notification-group",
+            properties = {
+                    "spring.json.value.default.type=com.smartbank.notification.event.AccountFrozenEvent"
+            }
+    )
+    public void onAccountFrozen(@Payload AccountFrozenEvent event) {
+        log.warn(" [EVENT] Account frozen: {} ({}), reason={}",
+                event.getAccountNumber(), event.getAccountId(), event.getReason());
+
+        try {
+            Map<String, Object> vars = new HashMap<>();
+            vars.put("accountNumber", event.getAccountNumber());
+            vars.put("ownerName", event.getOwnerName());
+            vars.put("balance", event.getBalance());
+            vars.put("reason", event.getReason());
+            vars.put("timestamp", LocalDateTime.now().format(FMT));
+
+            emailService.sendEmailWithPriority(
+                    "ACCOUNT_FROZEN",
+                    "account-frozen",
+                    "URGENT: Your account " + event.getAccountNumber() + " has been frozen",
+                    true,
+                    vars
+            );
+        } catch (Exception e) {
+            log.error("Failed to send freeze email: {}", e.getMessage(), e);
         }
     }
 }

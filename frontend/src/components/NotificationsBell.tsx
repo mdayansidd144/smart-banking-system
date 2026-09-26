@@ -23,7 +23,10 @@ function relativeTime(iso: string) {
   if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
   if (d < 7) return `${d}d ago`;
-  return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+  return new Date(iso).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+  });
 }
 
 export default function NotificationsBell() {
@@ -62,7 +65,7 @@ export default function NotificationsBell() {
   }, [open]);
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative z-[100]" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -91,7 +94,7 @@ export default function NotificationsBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-blue-100 dark:border-slate-700 overflow-hidden z-50 animate-fade-in">
+        <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-blue-100 dark:border-slate-700 overflow-hidden z-[9999] animate-fade-in">
           <div className="flex items-center justify-between px-4 py-3 border-b border-blue-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
             <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
               Notifications
